@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "env-paths": "3.0.0",
     "ws": "^8.16.0",
     "zod": "^3.22.0"
   },

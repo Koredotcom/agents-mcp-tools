@@ -1,14 +1,15 @@
 /**
  * Credentials Reader
  *
- * Reads stored credentials from ~/.kore-platform/credentials (Conf-format).
+ * Reads stored credentials from the kore-platform CLI credential store.
  * Compatible with the kore-platform-cli credential storage.
  */
 
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import * as os from 'node:os';
-import * as crypto from 'node:crypto';
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import * as crypto from "node:crypto";
+import envPaths from "env-paths";
 
 export interface StoredCredentials {
   token: string;
@@ -17,42 +18,187 @@ export interface StoredCredentials {
   email?: string;
 }
 
-/**
- * Get the credentials file path.
- * Conf uses: ~/.config/kore-platform/credentials.json (Linux/Mac)
- */
-function getCredentialsPath(): string {
-  const configDir = process.env['XDG_CONFIG_HOME'] || path.join(os.homedir(), '.config');
-  return path.join(configDir, 'kore-platform', 'credentials.json');
+const CONF_PROJECT_NAME = "kore-platform";
+const CONF_PROJECT_SUFFIX = "nodejs";
+const CONF_CONFIG_NAME = "credentials";
+const CONF_FILE_EXTENSION = "json";
+const CONF_ENCRYPTION_KEY = "kore-platform-cli-v1";
+const CONF_ENCRYPTION_ALGORITHM = "aes-256-cbc";
+const CONF_IV_BYTES = 16;
+const CONF_SEPARATOR_BYTES = 1;
+const CONF_PBKDF2_ITERATIONS = 10_000;
+const CONF_KEY_BYTES = 32;
+const CONF_PBKDF2_DIGEST = "sha512";
+const LEGACY_CONFIG_DIR_NAME = "kore-platform";
+const CREDENTIAL_DIRECTORY_MODE = 0o700;
+const CREDENTIAL_FILE_MODE = 0o600;
+
+function getConfConfigDir(): string {
+  return envPaths(CONF_PROJECT_NAME, { suffix: CONF_PROJECT_SUFFIX }).config;
 }
 
-/**
- * Decrypt a Conf-encrypted file.
- * Conf uses AES-256-CBC with the encryption key as password.
- */
-function decryptConf(encryptedData: string, encryptionKey: string): string {
-  // Conf stores: hex(iv) + encrypted_data
-  // The encryption key is hashed to create the actual key
-  const key = crypto.createHash('sha256').update(encryptionKey).digest();
+function getPrimaryCredentialsPath(): string {
+  return path.join(
+    getConfConfigDir(),
+    `${CONF_CONFIG_NAME}.${CONF_FILE_EXTENSION}`,
+  );
+}
+
+function getLegacyCredentialsPath(): string {
+  const configDir = path.join(os.homedir(), ".config");
+  return path.join(
+    configDir,
+    LEGACY_CONFIG_DIR_NAME,
+    `${CONF_CONFIG_NAME}.${CONF_FILE_EXTENSION}`,
+  );
+}
+
+function getCredentialsPaths(): string[] {
+  const paths = [getPrimaryCredentialsPath(), getLegacyCredentialsPath()];
+  return [...new Set(paths)];
+}
+
+function toBuffer(raw: string | Buffer): Buffer {
+  return Buffer.isBuffer(raw) ? raw : Buffer.from(raw, "utf8");
+}
+
+function parseJson(raw: string | Buffer): Record<string, unknown> | null {
+  const text = toBuffer(raw).toString("utf8").trim();
+  if (!text) return null;
 
   try {
-    // Try to parse as JSON first (unencrypted fallback)
-    JSON.parse(encryptedData);
-    return encryptedData;
-  } catch {
-    // It's encrypted — Conf uses a specific format
+    const parsed = JSON.parse(text) as unknown;
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+function deriveConfKey(initializationVector: Buffer): Buffer {
+  return crypto.pbkdf2Sync(
+    CONF_ENCRYPTION_KEY,
+    initializationVector.toString(),
+    CONF_PBKDF2_ITERATIONS,
+    CONF_KEY_BYTES,
+    CONF_PBKDF2_DIGEST,
+  );
+}
+
+function decryptConfV12(raw: string | Buffer): string {
+  const data = toBuffer(raw);
+  const minimumBytes = CONF_IV_BYTES + CONF_SEPARATOR_BYTES + 1;
+  if (data.length < minimumBytes || data[CONF_IV_BYTES] !== ":".charCodeAt(0)) {
+    throw new Error("Not a Conf v12 encrypted payload");
   }
 
-  // Conf format: base64-encoded encrypted data with IV prepended
-  const data = Buffer.from(encryptedData, 'hex');
-  const iv = data.subarray(0, 16);
-  const encrypted = data.subarray(16);
+  const initializationVector = data.subarray(0, CONF_IV_BYTES);
+  const encrypted = data.subarray(CONF_IV_BYTES + CONF_SEPARATOR_BYTES);
+  const decipher = crypto.createDecipheriv(
+    CONF_ENCRYPTION_ALGORITHM,
+    deriveConfKey(initializationVector),
+    initializationVector,
+  );
 
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  let decrypted = decipher.update(encrypted, undefined, 'utf8');
-  decrypted += decipher.final('utf8');
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString(
+    "utf8",
+  );
+}
+
+function decryptLegacyConf(raw: string | Buffer): string {
+  const text = toBuffer(raw).toString("utf8").trim();
+  const key = crypto.createHash("sha256").update(CONF_ENCRYPTION_KEY).digest();
+  const data = Buffer.from(text, "hex");
+  const initializationVector = data.subarray(0, CONF_IV_BYTES);
+  const encrypted = data.subarray(CONF_IV_BYTES);
+
+  const decipher = crypto.createDecipheriv(
+    CONF_ENCRYPTION_ALGORITHM,
+    key,
+    initializationVector,
+  );
+  let decrypted = decipher.update(encrypted, undefined, "utf8");
+  decrypted += decipher.final("utf8");
 
   return decrypted;
+}
+
+function parseCredentialData(
+  raw: string | Buffer,
+): Record<string, unknown> | null {
+  const json = parseJson(raw);
+  if (json) return json;
+
+  try {
+    return parseJson(decryptConfV12(raw));
+  } catch (_err) {
+    // Try the older hand-rolled format used by early MCP tooling.
+  }
+
+  try {
+    return parseJson(decryptLegacyConf(raw));
+  } catch (_err) {
+    return null;
+  }
+}
+
+function getStringField(
+  data: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = data[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function toStoredCredentials(
+  data: Record<string, unknown>,
+): StoredCredentials | null {
+  const token = getStringField(data, "token");
+  const expiresAt = getStringField(data, "expiresAt");
+
+  if (!token || !expiresAt) {
+    return null;
+  }
+
+  return {
+    token,
+    refreshToken: getStringField(data, "refreshToken"),
+    expiresAt,
+    email: getStringField(data, "email"),
+  };
+}
+
+function readCredentialDataFromPath(
+  credPath: string,
+): Record<string, unknown> | null {
+  try {
+    if (!fs.existsSync(credPath)) {
+      return null;
+    }
+
+    const raw = fs.readFileSync(credPath);
+    return parseCredentialData(raw);
+  } catch (_err) {
+    return null;
+  }
+}
+
+function encryptConfV12(data: Record<string, unknown>): Buffer {
+  const initializationVector = crypto.randomBytes(CONF_IV_BYTES);
+  const cipher = crypto.createCipheriv(
+    CONF_ENCRYPTION_ALGORITHM,
+    deriveConfKey(initializationVector),
+    initializationVector,
+  );
+  const serialized = Buffer.from(JSON.stringify(data, undefined, "\t"), "utf8");
+
+  return Buffer.concat([
+    initializationVector,
+    Buffer.from(":"),
+    cipher.update(serialized),
+    cipher.final(),
+  ]);
 }
 
 /**
@@ -60,62 +206,57 @@ function decryptConf(encryptedData: string, encryptionKey: string): string {
  * Returns null if no credentials found, expired, or unreadable.
  */
 export function readStoredCredentials(): StoredCredentials | null {
-  const credPath = getCredentialsPath();
+  for (const credPath of getCredentialsPaths()) {
+    const data = readCredentialDataFromPath(credPath);
+    if (!data) continue;
 
-  try {
-    if (!fs.existsSync(credPath)) {
-      return null;
-    }
-
-    const raw = fs.readFileSync(credPath, 'utf-8').trim();
-    if (!raw) return null;
-
-    let data: Record<string, unknown>;
-    try {
-      // Try decrypting with the known encryption key
-      // TODO: Replace with OS keychain (keytar) — hardcoded key provides encoding, not confidentiality
-      const decrypted = decryptConf(raw, 'kore-platform-cli-v1');
-      data = JSON.parse(decrypted);
-    } catch {
-      // If decryption fails, try reading as plain JSON
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        return null;
-      }
-    }
-
-    const token = data['token'] as string | undefined;
-    const expiresAt = data['expiresAt'] as string | undefined;
-
-    if (!token || !expiresAt) {
-      return null;
-    }
-
-    return {
-      token,
-      refreshToken: (data['refreshToken'] as string) || undefined,
-      expiresAt,
-      email: (data['email'] as string) || undefined,
-    };
-  } catch {
-    return null;
+    const credentials = toStoredCredentials(data);
+    if (credentials) return credentials;
   }
+
+  return null;
 }
 
 /**
- * Write credentials to ~/.config/kore-platform/credentials.json.
+ * Write credentials to the CLI-compatible Conf store.
  * Creates the directory if it doesn't exist.
  */
 export function writeStoredCredentials(creds: StoredCredentials): void {
-  const credPath = getCredentialsPath();
+  const credPath = getPrimaryCredentialsPath();
   const dir = path.dirname(credPath);
 
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true, mode: CREDENTIAL_DIRECTORY_MODE });
+  }
+  fs.chmodSync(dir, CREDENTIAL_DIRECTORY_MODE);
+
+  const existing = readCredentialDataFromPath(credPath) || {};
+  const data: Record<string, unknown> = {
+    ...existing,
+    token: creds.token,
+    expiresAt: creds.expiresAt,
+  };
+
+  if (creds.refreshToken) {
+    data["refreshToken"] = creds.refreshToken;
   }
 
-  fs.writeFileSync(credPath, JSON.stringify(creds, null, 2), { mode: 0o600 });
+  if (creds.email) {
+    data["email"] = creds.email;
+  }
+
+  const temporaryPath = `${credPath}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, encryptConfV12(data), {
+      mode: CREDENTIAL_FILE_MODE,
+    });
+    fs.renameSync(temporaryPath, credPath);
+    fs.chmodSync(credPath, CREDENTIAL_FILE_MODE);
+  } finally {
+    if (fs.existsSync(temporaryPath)) {
+      fs.unlinkSync(temporaryPath);
+    }
+  }
 }
 
 /**
