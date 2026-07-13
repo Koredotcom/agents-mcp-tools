@@ -174,22 +174,28 @@ export async function platformWorkspaces(
           );
         }
 
-        const result = (await response.json()) as {
-          accessToken: string;
-          tenantId: string;
-          role: string;
-          expiresIn?: number;
-          orgId?: string | null;
-        };
+        const result = parseWorkspaceSwitchResponse(
+          await response.json(),
+          tenantId,
+        );
+        if (!result.ok) {
+          return error(
+            result.error,
+            "The workspace was not changed. Retry or re-authenticate.",
+          );
+        }
 
         const wasWebSocketConnected = ctx.wsClient.isConnected();
 
         // HTTP requests read the current token per call, while WebSocket auth is
         // fixed during the handshake. Reconnect an open socket so subsequent
         // debug events and session subscriptions use the selected workspace.
-        ctx.httpClient.setAuthToken(result.accessToken);
-        ctx.wsClient.setAuthToken(result.accessToken);
-        persistSwitchedWorkspaceToken(result.accessToken, result.expiresIn);
+        ctx.httpClient.setAuthToken(result.data.accessToken);
+        ctx.wsClient.setAuthToken(result.data.accessToken);
+        const persistenceWarning = persistSwitchedWorkspaceToken(
+          result.data.accessToken,
+          result.data.expiresIn,
+        );
         if (wasWebSocketConnected) {
           ctx.wsClient.disconnect();
           await ctx.wsClient.connect();
@@ -197,11 +203,13 @@ export async function platformWorkspaces(
 
         return success({
           status: "switched",
-          tenantId: result.tenantId,
-          role: result.role,
-          orgId: result.orgId || null,
+          tenantId: result.data.tenantId,
+          role: result.data.role,
+          orgId: result.data.orgId || null,
           websocketReconnected: wasWebSocketConnected,
-          message: `Switched to workspace ${result.tenantId} (role: ${result.role}). All subsequent API calls are scoped to this workspace.`,
+          credentialPersisted: persistenceWarning === null,
+          ...(persistenceWarning ? { warning: persistenceWarning } : {}),
+          message: `Switched to workspace ${result.data.tenantId} (role: ${result.data.role}). All subsequent API calls are scoped to this workspace.`,
         });
       }
 
@@ -244,26 +252,99 @@ export async function platformWorkspaces(
 function persistSwitchedWorkspaceToken(
   accessToken: string,
   expiresIn?: number,
-): void {
-  const existing = readStoredCredentials();
-  const payload = decodeJwtPayload(accessToken);
-  const jwtExpiry =
-    typeof payload?.exp === "number" ? payload.exp * 1000 : null;
-  const expiresAt =
-    typeof expiresIn === "number" && expiresIn > 0
-      ? new Date(Date.now() + expiresIn * 1000).toISOString()
-      : jwtExpiry
-        ? new Date(jwtExpiry).toISOString()
-        : existing?.expiresAt;
+): string | null {
+  try {
+    const existing = readStoredCredentials();
+    const payload = decodeJwtPayload(accessToken);
+    const jwtExpiry =
+      typeof payload?.exp === "number" ? payload.exp * 1000 : null;
+    const expiresAt =
+      typeof expiresIn === "number" && expiresIn > 0
+        ? new Date(Date.now() + expiresIn * 1000).toISOString()
+        : jwtExpiry
+          ? new Date(jwtExpiry).toISOString()
+          : existing?.expiresAt;
 
-  if (!expiresAt) return;
+    if (!expiresAt) {
+      return "Workspace switched for this process, but the token expiry was unavailable so the selection could not be persisted.";
+    }
 
-  writeStoredCredentials({
-    token: accessToken,
-    expiresAt,
-    ...(existing?.refreshToken ? { refreshToken: existing.refreshToken } : {}),
-    ...(existing?.email ? { email: existing.email } : {}),
-  });
+    writeStoredCredentials({
+      token: accessToken,
+      expiresAt,
+      ...(existing?.refreshToken
+        ? { refreshToken: existing.refreshToken }
+        : {}),
+      ...(existing?.email ? { email: existing.email } : {}),
+    });
+    return null;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return `Workspace switched for this process, but credential persistence failed: ${message}`;
+  }
+}
+
+interface WorkspaceSwitchData {
+  accessToken: string;
+  tenantId: string;
+  role: string;
+  expiresIn?: number;
+  orgId?: string | null;
+}
+
+function parseWorkspaceSwitchResponse(
+  value: unknown,
+  requestedTenantId: string,
+): { ok: true; data: WorkspaceSwitchData } | { ok: false; error: string } {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return {
+      ok: false,
+      error: "Workspace switch returned an invalid response.",
+    };
+  }
+  const record = value as Record<string, unknown>;
+  const accessToken =
+    typeof record.accessToken === "string" ? record.accessToken : "";
+  const returnedTenantId =
+    typeof record.tenantId === "string" ? record.tenantId : "";
+  const role = typeof record.role === "string" ? record.role : "";
+  if (!accessToken || !returnedTenantId || !role) {
+    return {
+      ok: false,
+      error:
+        "Workspace switch response omitted required authentication fields.",
+    };
+  }
+  if (returnedTenantId !== requestedTenantId) {
+    return {
+      ok: false,
+      error: `Workspace switch returned tenant ${returnedTenantId}, not requested tenant ${requestedTenantId}.`,
+    };
+  }
+  const tokenTenantId = decodeJwtPayload(accessToken)?.tenantId;
+  if (
+    typeof tokenTenantId === "string" &&
+    tokenTenantId !== requestedTenantId
+  ) {
+    return {
+      ok: false,
+      error: `Workspace token is scoped to tenant ${tokenTenantId}, not requested tenant ${requestedTenantId}.`,
+    };
+  }
+  return {
+    ok: true,
+    data: {
+      accessToken,
+      tenantId: returnedTenantId,
+      role,
+      ...(typeof record.expiresIn === "number"
+        ? { expiresIn: record.expiresIn }
+        : {}),
+      ...(typeof record.orgId === "string" || record.orgId === null
+        ? { orgId: record.orgId }
+        : {}),
+    },
+  };
 }
 
 /**

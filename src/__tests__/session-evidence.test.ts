@@ -240,4 +240,36 @@ describe("session evidence", () => {
     expect(evidenceResult.evidence.diagnostics.runtimeTraceFetched).toBe(false);
     expect(evidenceResult.evidence.diagnostics.warnings[0]).toContain("500");
   });
+
+  test("accepts an authorized historical session with no trace events", async () => {
+    requestStudioJsonMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        body: { error: "detail route unavailable" },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        body: { error: "detail route unavailable" },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: { success: true, total: 0, traces: [] },
+      });
+
+    const evidenceResult = await loadSessionEvidence(makeContext(), {
+      sessionId: "session-empty",
+      projectId: "project-1",
+      preferRuntime: true,
+    });
+
+    expect(evidenceResult.ok).toBe(true);
+    if (!evidenceResult.ok) return;
+    expect(evidenceResult.evidence.source).toBe("runtime_proxy");
+    expect(evidenceResult.evidence.events).toEqual([]);
+    expect(evidenceResult.evidence.diagnostics.runtimeTraceFetched).toBe(true);
+  });
 });

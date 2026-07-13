@@ -129,4 +129,79 @@ describe("platform_workspaces", () => {
       email: "developer@example.com",
     });
   });
+
+  test("rejects a successful response scoped to a different workspace", async () => {
+    const ctx = createMockContext();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken: makeJwt({ tenantId: "other-tenant" }),
+            tenantId: "target-tenant",
+            role: "OWNER",
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const result = JSON.parse(
+      await platformWorkspaces(
+        { action: "switch", tenantId: "target-tenant" },
+        ctx,
+      ),
+    ) as Record<string, unknown>;
+
+    expect(result).toMatchObject({ success: false });
+    expect(String(result.error)).toContain("other-tenant");
+    expect(ctx.httpClient.setAuthToken).not.toHaveBeenCalled();
+    expect(ctx.wsClient.setAuthToken).not.toHaveBeenCalled();
+  });
+
+  test("keeps the switched workspace active when credential persistence fails", async () => {
+    const ctx = createMockContext();
+    vi.mocked(writeStoredCredentials).mockImplementation(() => {
+      throw new Error("credential file is read-only");
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            accessToken: "target-tenant-token",
+            tenantId: "target-tenant",
+            role: "OWNER",
+            expiresIn: 3600,
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+
+    const result = JSON.parse(
+      await platformWorkspaces(
+        { action: "switch", tenantId: "target-tenant" },
+        ctx,
+      ),
+    ) as Record<string, unknown>;
+
+    expect(result).toMatchObject({
+      success: true,
+      credentialPersisted: false,
+      websocketReconnected: true,
+    });
+    expect(String(result.warning)).toContain("credential file is read-only");
+    expect(ctx.wsClient.connect).toHaveBeenCalledOnce();
+  });
 });
+
+function makeJwt(payload: Record<string, unknown>): string {
+  return [
+    Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString(
+      "base64url",
+    ),
+    Buffer.from(JSON.stringify(payload)).toString("base64url"),
+    "signature",
+  ].join(".");
+}

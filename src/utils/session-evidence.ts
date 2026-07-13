@@ -141,7 +141,12 @@ export async function loadSessionEvidence(
     }
   }
 
-  if (!memorySession && !runtimeSession && runtimeEvents.length === 0) {
+  if (
+    !memorySession &&
+    !runtimeSession &&
+    runtimeEvents.length === 0 &&
+    !diagnostics.runtimeTraceFetched
+  ) {
     return {
       ok: false,
       sessionId,
@@ -156,7 +161,12 @@ export async function loadSessionEvidence(
   const usingRuntimeEvents = runtimeEvents.length > 0;
   const events = usingRuntimeEvents ? runtimeEvents : memoryEvents;
   const limitedEvents = applyLimit(events, options.traceLimit);
-  const source = pickSource(memorySession, runtimeSession, usingRuntimeEvents);
+  const source = pickSource(
+    memorySession,
+    runtimeSession,
+    usingRuntimeEvents,
+    diagnostics.runtimeTraceFetched,
+  );
   const agentDetails =
     memorySession?.agentDetails || toAgentDetails(runtimeSession);
   const agentName =
@@ -530,9 +540,14 @@ function pickSource(
   memorySession: DebugSession | undefined,
   runtimeSession: JsonRecord | undefined,
   usingRuntimeEvents: boolean,
+  runtimeTraceFetched: boolean,
 ): EvidenceSource {
   if (memorySession && usingRuntimeEvents) return "memory+runtime_proxy";
-  if (usingRuntimeEvents || (!memorySession && runtimeSession))
+  if (
+    usingRuntimeEvents ||
+    runtimeTraceFetched ||
+    (!memorySession && runtimeSession)
+  )
     return "runtime_proxy";
   return "memory";
 }
