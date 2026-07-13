@@ -97,7 +97,7 @@ export async function authenticate(
       options.deviceCode,
       options.pollTimeoutMs,
     );
-    persistTokenIfPossible(result);
+    persistTokenIfPossible(result, undefined, baseUrl);
     return result;
   }
 
@@ -121,6 +121,15 @@ async function tryStoredCredentials(
   try {
     const creds = readStoredCredentials();
     if (!creds) return null;
+    if (
+      creds.serverUrl &&
+      normalizeServerOrigin(creds.serverUrl) !== normalizeServerOrigin(baseUrl)
+    ) {
+      console.error(
+        `${ARCH_MCP_LOG_PREFIX} Stored credentials belong to a different server`,
+      );
+      return null;
+    }
 
     // If token is still valid, use it directly
     if (hasValidToken(creds)) {
@@ -166,6 +175,7 @@ async function tryStoredCredentials(
               expiresIn: data.expiresIn ?? data.expires_in,
             },
             creds.email,
+            baseUrl,
           );
           console.error(`${ARCH_MCP_LOG_PREFIX} Refreshed stored credentials`);
           return { token: data.accessToken, method: "stored_credentials" };
@@ -302,7 +312,7 @@ async function deviceAuthFlow(
     "Authenticated via device authorization. Browser login successful.";
 
   // 5. Persist credentials
-  persistTokenIfPossible(result);
+  persistTokenIfPossible(result, undefined, baseUrl);
 
   return result;
 }
@@ -314,6 +324,7 @@ async function deviceAuthFlow(
 function persistTokenIfPossible(
   result: AuthResult,
   fallbackEmail?: string,
+  serverUrl?: string,
 ): void {
   if (!result.token || result.method === "device_auth_pending") return;
 
@@ -336,6 +347,7 @@ function persistTokenIfPossible(
       ...(result.refreshToken ? { refreshToken: result.refreshToken } : {}),
       expiresAt,
       email: payload.email || fallbackEmail,
+      serverUrl: serverUrl ? normalizeServerOrigin(serverUrl) : undefined,
     });
     console.error(
       `${ARCH_MCP_LOG_PREFIX} Credentials saved to ~/.config/kore-platform/credentials.json`,
@@ -440,6 +452,14 @@ async function pollDeviceAuth(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeServerOrigin(value: string): string {
+  try {
+    return new URL(value).origin.toLowerCase();
+  } catch {
+    return value.replace(/\/+$/, "").toLowerCase();
+  }
 }
 
 export class DeviceAuthError extends Error {

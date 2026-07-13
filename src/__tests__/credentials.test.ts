@@ -264,6 +264,7 @@ describe("credentials", () => {
         refreshToken: "new-refresh",
         expiresAt: "2099-01-01T00:00:00.000Z",
         email: "new@example.com",
+        serverUrl: "https://agents-dev.kore.ai",
       });
 
       const stat = fs.statSync(primaryCredentialsPath());
@@ -276,6 +277,7 @@ describe("credentials", () => {
         token: "new-token",
         refreshToken: "new-refresh",
         email: "new@example.com",
+        serverUrl: "https://agents-dev.kore.ai",
       });
     });
 

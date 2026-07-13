@@ -144,6 +144,25 @@ describe("authenticate", () => {
   // =========================================================================
 
   describe("stored credentials", () => {
+    test("does not reuse credentials scoped to a different server", async () => {
+      const { httpClient, wsClient } = createMockClients();
+      vi.mocked(readStoredCredentials).mockReturnValue({
+        token: "qa-token",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        serverUrl: "https://agents-qa.kore.ai",
+      });
+      vi.mocked(hasValidToken).mockReturnValue(true);
+      globalThis.fetch = mockDeviceAuthFetch();
+
+      const result = await authenticate(httpClient, wsClient);
+
+      expect(result.method).toBe("device_auth");
+      expect(httpClient.setAuthToken).not.toHaveBeenCalledWith("qa-token");
+      expect(writeStoredCredentials).toHaveBeenCalledWith(
+        expect.objectContaining({ serverUrl: "http://localhost:3112" }),
+      );
+    });
+
     test("uses stored token when valid", async () => {
       const { httpClient, wsClient } = createMockClients();
       vi.mocked(readStoredCredentials).mockReturnValue({

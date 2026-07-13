@@ -94,6 +94,7 @@ describe("platform_workspaces", () => {
       refreshToken: "refresh-token",
       expiresAt: "2099-01-01T00:00:00.000Z",
       email: "developer@example.com",
+      serverUrl: "https://agents-dev.kore.ai",
     });
     vi.stubGlobal(
       "fetch",
@@ -127,6 +128,7 @@ describe("platform_workspaces", () => {
       refreshToken: "refresh-token",
       expiresAt: "2099-01-01T00:00:00.000Z",
       email: "developer@example.com",
+      serverUrl: "https://agents-dev.kore.ai",
     });
   });
 

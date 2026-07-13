@@ -16,6 +16,7 @@ export interface StoredCredentials {
   refreshToken?: string;
   expiresAt: string;
   email?: string;
+  serverUrl?: string;
 }
 
 const CONF_PROJECT_NAME = "kore-platform";
@@ -166,6 +167,7 @@ function toStoredCredentials(
     refreshToken: getStringField(data, "refreshToken"),
     expiresAt,
     email: getStringField(data, "email"),
+    serverUrl: getStringField(data, "serverUrl"),
   };
 }
 
@@ -243,6 +245,9 @@ export function writeStoredCredentials(creds: StoredCredentials): void {
 
   if (creds.email) {
     data["email"] = creds.email;
+  }
+  if (creds.serverUrl) {
+    data["serverUrl"] = creds.serverUrl;
   }
 
   const temporaryPath = `${credPath}.${process.pid}.tmp`;

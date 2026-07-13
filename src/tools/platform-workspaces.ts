@@ -195,6 +195,7 @@ export async function platformWorkspaces(
         const persistenceWarning = persistSwitchedWorkspaceToken(
           result.data.accessToken,
           result.data.expiresIn,
+          baseUrl,
         );
         if (wasWebSocketConnected) {
           ctx.wsClient.disconnect();
@@ -251,7 +252,8 @@ export async function platformWorkspaces(
 
 function persistSwitchedWorkspaceToken(
   accessToken: string,
-  expiresIn?: number,
+  expiresIn: number | undefined,
+  serverUrl: string,
 ): string | null {
   try {
     const existing = readStoredCredentials();
@@ -276,11 +278,20 @@ function persistSwitchedWorkspaceToken(
         ? { refreshToken: existing.refreshToken }
         : {}),
       ...(existing?.email ? { email: existing.email } : {}),
+      serverUrl: normalizeServerOrigin(serverUrl),
     });
     return null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return `Workspace switched for this process, but credential persistence failed: ${message}`;
+  }
+}
+
+function normalizeServerOrigin(value: string): string {
+  try {
+    return new URL(value).origin.toLowerCase();
+  } catch {
+    return value.replace(/\/+$/, "").toLowerCase();
   }
 }
 
