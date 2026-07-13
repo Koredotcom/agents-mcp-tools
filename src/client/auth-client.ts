@@ -21,6 +21,7 @@ import {
 import { fetchWithTimeout } from "../utils/fetch.js";
 import { execFile } from "node:child_process";
 import { ARCH_MCP_LOG_PREFIX } from "../tools/persona.js";
+import { deriveStudioUrl } from "../utils/studio-api.js";
 
 export interface AuthResult {
   token: string;
@@ -133,6 +134,11 @@ async function tryStoredCredentials(
 
     // If token is still valid, use it directly
     if (hasValidToken(creds)) {
+      const validated = await validateStoredAccessToken(
+        deriveStudioUrl(baseUrl),
+        creds.token,
+      );
+      if (!validated) return null;
       setTokenOnClients(httpClient, wsClient, creds.token);
       console.error(`${ARCH_MCP_LOG_PREFIX} Using stored credentials`);
       return { token: creds.token, method: "stored_credentials" };
@@ -197,6 +203,26 @@ async function tryStoredCredentials(
   }
 
   return null;
+}
+
+async function validateStoredAccessToken(
+  studioBaseUrl: string,
+  token: string,
+): Promise<boolean> {
+  try {
+    const response = await fetchWithTimeout(
+      `${studioBaseUrl}/api/auth/me`,
+      { headers: { Authorization: `Bearer ${token}` } },
+      10_000,
+    );
+    return response.ok;
+  } catch (err) {
+    console.error(
+      `${ARCH_MCP_LOG_PREFIX} Stored credential validation failed:`,
+      err instanceof Error ? err.message : String(err),
+    );
+    return false;
+  }
 }
 
 /**

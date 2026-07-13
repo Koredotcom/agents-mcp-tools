@@ -163,8 +163,40 @@ describe("authenticate", () => {
       );
     });
 
+    test("falls through to device auth when the server rejects a cached token", async () => {
+      const { httpClient, wsClient } = createMockClients();
+      vi.mocked(readStoredCredentials).mockReturnValue({
+        token: "revoked-token",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        serverUrl: "http://localhost:3112",
+      });
+      vi.mocked(hasValidToken).mockReturnValue(true);
+      globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+        if (url.includes("/api/auth/me")) return Promise.resolve({ ok: false });
+        if (url.includes("/api/auth/device") && !url.includes("/token")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(deviceAuthInitResponse()),
+          });
+        }
+        if (url.includes("/device/token")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(deviceTokenResponse()),
+          });
+        }
+        return Promise.resolve({ ok: false });
+      });
+
+      const result = await authenticate(httpClient, wsClient);
+
+      expect(result.method).toBe("device_auth");
+      expect(httpClient.setAuthToken).not.toHaveBeenCalledWith("revoked-token");
+    });
+
     test("uses stored token when valid", async () => {
       const { httpClient, wsClient } = createMockClients();
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
       vi.mocked(readStoredCredentials).mockReturnValue({
         token: "stored-jwt",
         expiresAt: "2099-01-01T00:00:00.000Z",
@@ -457,8 +489,9 @@ describe("authenticate", () => {
       });
     });
 
-    test("stored credentials win over device auth (fetch never called)", async () => {
+    test("validated stored credentials win over device auth", async () => {
       const { httpClient, wsClient } = createMockClients();
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
       vi.mocked(readStoredCredentials).mockReturnValue({
         token: "stored-jwt",
         expiresAt: "2099-01-01T00:00:00.000Z",
@@ -467,7 +500,12 @@ describe("authenticate", () => {
 
       const result = await authenticate(httpClient, wsClient);
       expect(result.method).toBe("stored_credentials");
-      expect(globalThis.fetch).toBe(originalFetch); // never replaced
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "http://localhost:5173/api/auth/me",
+        expect.objectContaining({
+          headers: { Authorization: "Bearer stored-jwt" },
+        }),
+      );
     });
   });
 });
