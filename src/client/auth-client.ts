@@ -10,21 +10,25 @@
  *      - Persists credentials on success
  */
 
-import type { HttpClient } from './http-client.js';
-import type { WebSocketClient } from './websocket-client.js';
+import type { HttpClient } from "./http-client.js";
+import type { WebSocketClient } from "./websocket-client.js";
 import {
   readStoredCredentials,
   hasValidToken,
   hasRefreshToken,
   writeStoredCredentials,
-} from './credentials.js';
-import { fetchWithTimeout } from '../utils/fetch.js';
-import { execFile } from 'node:child_process';
-import { ARCH_MCP_LOG_PREFIX } from '../tools/persona.js';
+} from "./credentials.js";
+import { fetchWithTimeout } from "../utils/fetch.js";
+import { execFile } from "node:child_process";
+import { ARCH_MCP_LOG_PREFIX } from "../tools/persona.js";
 
 export interface AuthResult {
   token: string;
-  method: 'explicit_token' | 'stored_credentials' | 'device_auth' | 'device_auth_pending';
+  method:
+    | "explicit_token"
+    | "stored_credentials"
+    | "device_auth"
+    | "device_auth_pending";
   message?: string;
   /** Present when method is 'device_auth_pending' — pass back to complete auth */
   deviceCode?: string;
@@ -32,6 +36,10 @@ export interface AuthResult {
   verificationUrl?: string;
   /** User-friendly code to display */
   userCode?: string;
+  /** Refresh token returned by device auth; persisted but never exposed by tools. */
+  refreshToken?: string;
+  /** Access-token lifetime returned by the auth server. */
+  expiresIn?: number;
 }
 
 export interface AuthOptions {
@@ -46,7 +54,11 @@ export interface AuthOptions {
 }
 
 /** Set token on both HTTP and WS clients. */
-function setTokenOnClients(httpClient: HttpClient, wsClient: WebSocketClient, token: string): void {
+function setTokenOnClients(
+  httpClient: HttpClient,
+  wsClient: WebSocketClient,
+  token: string,
+): void {
   httpClient.setAuthToken(token);
   wsClient.setAuthToken(token);
 }
@@ -67,7 +79,7 @@ export async function authenticate(
   // 1. Explicit token
   if (options.authToken) {
     setTokenOnClients(httpClient, wsClient, options.authToken);
-    return { token: options.authToken, method: 'explicit_token' };
+    return { token: options.authToken, method: "explicit_token" };
   }
 
   // 2. Stored credentials
@@ -85,12 +97,17 @@ export async function authenticate(
       options.deviceCode,
       options.pollTimeoutMs,
     );
-    await persistTokenIfPossible(result, baseUrl);
+    persistTokenIfPossible(result);
     return result;
   }
 
   // Full device auth: initiate → open browser → poll → persist
-  return await deviceAuthFlow(httpClient, wsClient, baseUrl, options.pollTimeoutMs);
+  return await deviceAuthFlow(
+    httpClient,
+    wsClient,
+    baseUrl,
+    options.pollTimeoutMs,
+  );
 }
 
 /**
@@ -109,7 +126,7 @@ async function tryStoredCredentials(
     if (hasValidToken(creds)) {
       setTokenOnClients(httpClient, wsClient, creds.token);
       console.error(`${ARCH_MCP_LOG_PREFIX} Using stored credentials`);
-      return { token: creds.token, method: 'stored_credentials' };
+      return { token: creds.token, method: "stored_credentials" };
     }
 
     // If expired but has refresh token, try to refresh
@@ -118,18 +135,40 @@ async function tryStoredCredentials(
         const response = await fetchWithTimeout(
           `${baseUrl}/api/auth/refresh`,
           {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: creds.refreshToken }),
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              refresh_token: creds.refreshToken,
+              refreshToken: creds.refreshToken,
+            }),
           },
           15_000,
         );
 
         if (response.ok) {
-          const data = (await response.json()) as { accessToken: string };
+          const data = (await response.json()) as {
+            accessToken?: string;
+            refreshToken?: string;
+            refresh_token?: string;
+            expiresIn?: number;
+            expires_in?: number;
+          };
+          if (!data.accessToken) {
+            throw new Error("Refresh response omitted accessToken");
+          }
           setTokenOnClients(httpClient, wsClient, data.accessToken);
+          persistTokenIfPossible(
+            {
+              token: data.accessToken,
+              method: "stored_credentials",
+              refreshToken:
+                data.refreshToken || data.refresh_token || creds.refreshToken,
+              expiresIn: data.expiresIn ?? data.expires_in,
+            },
+            creds.email,
+          );
           console.error(`${ARCH_MCP_LOG_PREFIX} Refreshed stored credentials`);
-          return { token: data.accessToken, method: 'stored_credentials' };
+          return { token: data.accessToken, method: "stored_credentials" };
         }
       } catch (err) {
         console.error(
@@ -170,21 +209,23 @@ function openBrowser(url: string): void {
   let cmd: string;
   let args: string[];
 
-  if (platform === 'darwin') {
-    cmd = 'open';
+  if (platform === "darwin") {
+    cmd = "open";
     args = [url];
-  } else if (platform === 'win32') {
-    cmd = 'cmd';
-    args = ['/c', 'start', '', url];
+  } else if (platform === "win32") {
+    cmd = "cmd";
+    args = ["/c", "start", "", url];
   } else {
-    cmd = 'xdg-open';
+    cmd = "xdg-open";
     args = [url];
   }
 
   try {
     execFile(cmd, args, (err) => {
       if (err) {
-        console.error(`${ARCH_MCP_LOG_PREFIX} Could not open browser: ${err.message}`);
+        console.error(
+          `${ARCH_MCP_LOG_PREFIX} Could not open browser: ${err.message}`,
+        );
       }
     });
   } catch (err) {
@@ -210,15 +251,17 @@ async function deviceAuthFlow(
   const initResponse = await fetchWithTimeout(
     `${baseUrl}/api/auth/device`,
     {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scopes: ['read_traces', 'read_state', 'subscribe'] }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scopes: ["read_traces", "read_state", "subscribe"],
+      }),
     },
     15_000,
   );
 
   if (!initResponse.ok) {
-    const errorText = await initResponse.text().catch(() => 'Unknown error');
+    const errorText = await initResponse.text().catch(() => "Unknown error");
     throw new DeviceAuthError(
       `Failed to initiate device authorization (${initResponse.status}): ${errorText}. ` +
         `The runtime server may not have device auth enabled.`,
@@ -244,7 +287,8 @@ async function deviceAuthFlow(
   // 3. Poll for approval (blocks until approved or timeout)
   // Clamp server-provided expires_in to DEFAULT_POLL_TIMEOUT_MS to avoid unbounded waits
   const serverTimeoutMs = deviceAuth.expires_in * 1000;
-  const effectiveTimeout = pollTimeoutMs ?? Math.min(serverTimeoutMs, DEFAULT_POLL_TIMEOUT_MS);
+  const effectiveTimeout =
+    pollTimeoutMs ?? Math.min(serverTimeoutMs, DEFAULT_POLL_TIMEOUT_MS);
   const result = await pollDeviceAuth(
     httpClient,
     wsClient,
@@ -254,10 +298,11 @@ async function deviceAuthFlow(
   );
 
   // 4. Enrich the result message
-  result.message = 'Authenticated via device authorization. Browser login successful.';
+  result.message =
+    "Authenticated via device authorization. Browser login successful.";
 
   // 5. Persist credentials
-  await persistTokenIfPossible(result, baseUrl);
+  persistTokenIfPossible(result);
 
   return result;
 }
@@ -266,23 +311,31 @@ async function deviceAuthFlow(
  * Persist auth token to ~/.config/kore-platform/credentials.json.
  * Best-effort — failures are logged but do not break the auth flow.
  */
-async function persistTokenIfPossible(result: AuthResult, _baseUrl: string): Promise<void> {
-  if (!result.token || result.method === 'device_auth_pending') return;
+function persistTokenIfPossible(
+  result: AuthResult,
+  fallbackEmail?: string,
+): void {
+  if (!result.token || result.method === "device_auth_pending") return;
 
   try {
     // Decode JWT to extract expiry (without verifying — we just signed it)
-    const payload = JSON.parse(Buffer.from(result.token.split('.')[1], 'base64url').toString()) as {
+    const payload = JSON.parse(
+      Buffer.from(result.token.split(".")[1], "base64url").toString(),
+    ) as {
       exp?: number;
       email?: string;
     };
     const expiresAt = payload.exp
       ? new Date(payload.exp * 1000).toISOString()
-      : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      : new Date(
+          Date.now() + (result.expiresIn ?? 86_400) * 1000,
+        ).toISOString();
 
     writeStoredCredentials({
       token: result.token,
+      ...(result.refreshToken ? { refreshToken: result.refreshToken } : {}),
       expiresAt,
-      email: payload.email,
+      email: payload.email || fallbackEmail,
     });
     console.error(
       `${ARCH_MCP_LOG_PREFIX} Credentials saved to ~/.config/kore-platform/credentials.json`,
@@ -317,8 +370,8 @@ async function pollDeviceAuth(
       const tokenResponse = await fetchWithTimeout(
         `${baseUrl}/api/auth/device/token`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ device_code: deviceCode }),
         },
         15_000,
@@ -332,35 +385,41 @@ async function pollDeviceAuth(
         };
 
         setTokenOnClients(httpClient, wsClient, tokenData.access_token);
-        console.error(`${ARCH_MCP_LOG_PREFIX} Authenticated via device authorization`);
+        console.error(
+          `${ARCH_MCP_LOG_PREFIX} Authenticated via device authorization`,
+        );
 
         return {
           token: tokenData.access_token,
-          method: 'device_auth',
+          method: "device_auth",
+          refreshToken: tokenData.refresh_token,
+          expiresIn: tokenData.expires_in,
         };
       }
 
       // Check error type
-      const errorData = (await tokenResponse.json().catch(() => ({}))) as { error?: string };
+      const errorData = (await tokenResponse.json().catch(() => ({}))) as {
+        error?: string;
+      };
 
-      if (errorData.error === 'authorization_pending') {
+      if (errorData.error === "authorization_pending") {
         await sleep(pollInterval);
         continue;
       }
 
-      if (errorData.error === 'slow_down') {
+      if (errorData.error === "slow_down") {
         await sleep(pollInterval * 2);
         continue;
       }
 
-      if (errorData.error === 'expired_token') {
+      if (errorData.error === "expired_token") {
         throw new DeviceAuthError(
-          'Device authorization expired. Please run platform_connect again to start a new flow.',
+          "Device authorization expired. Please run platform_connect again to start a new flow.",
         );
       }
 
       throw new DeviceAuthError(
-        `Device authorization failed: ${errorData.error || 'unknown error'}`,
+        `Device authorization failed: ${errorData.error || "unknown error"}`,
       );
     } catch (e) {
       if (e instanceof DeviceAuthError) throw e;
@@ -374,8 +433,8 @@ async function pollDeviceAuth(
   }
 
   throw new DeviceAuthError(
-    'Device authorization not yet approved (timed out waiting). ' +
-      'Please approve in the browser, then call platform_connect again with the same deviceCode.',
+    "Device authorization not yet approved (timed out waiting). " +
+      "Please approve in the browser, then call platform_connect again with the same deviceCode.",
   );
 }
 
@@ -386,6 +445,6 @@ function sleep(ms: number): Promise<void> {
 export class DeviceAuthError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'DeviceAuthError';
+    this.name = "DeviceAuthError";
   }
 }
