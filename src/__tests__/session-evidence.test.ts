@@ -102,6 +102,12 @@ describe("session evidence", () => {
         body: { error: "session missing" },
       })
       .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        body: { error: "session missing" },
+      })
+      .mockResolvedValueOnce({
         ok: true,
         body: {
           traces: [
@@ -140,6 +146,56 @@ describe("session evidence", () => {
       traceId: "trace-1",
       spanId: "span-1",
     });
+  });
+
+  test("falls back to Studio compatibility routes when canonical session APIs are unavailable", async () => {
+    requestStudioJsonMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        body: { error: "route unavailable" },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: { session: { id: "session/1", agentName: "SupportAgent" } },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        body: { error: "route unavailable" },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        body: {
+          traces: [
+            {
+              id: "trace-1",
+              type: "agent_response",
+              sessionId: "session/1",
+              timestamp: "2026-06-02T07:41:00.000Z",
+              data: {},
+            },
+          ],
+        },
+      });
+
+    const evidenceResult = await loadSessionEvidence(makeContext(), {
+      sessionId: "session/1",
+      projectId: "project/1",
+      preferRuntime: true,
+    });
+
+    expect(evidenceResult.ok).toBe(true);
+    expect(
+      requestStudioJsonMock.mock.calls.map((call) => call[1].path),
+    ).toEqual([
+      "/api/projects/project%2F1/sessions/session%2F1?includeTraces=false",
+      "/api/runtime/sessions/session%2F1?includeTraces=false&projectId=project%2F1",
+      "/api/projects/project%2F1/sessions/session%2F1/traces?limit=250",
+      "/api/runtime/sessions/session%2F1/traces?limit=250&projectId=project%2F1",
+    ]);
   });
 
   test("reports memory source when runtime trace fetch fails and memory traces are used", async () => {

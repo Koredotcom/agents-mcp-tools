@@ -195,18 +195,17 @@ async function fetchRuntimeSession(
   sessionId: string,
   projectId: string,
 ): Promise<{ ok: true; session: JsonRecord } | { ok: false; warning: string }> {
-  const params = new URLSearchParams({ projectId, includeTraces: "false" });
-  const path = `/api/runtime/sessions/${encodeURIComponent(sessionId)}?${params.toString()}`;
-  const result = await requestStudioJson(ctx, {
-    method: "GET",
-    path,
-    timeoutMs: 15_000,
-  });
+  const paths = buildSessionReadPaths(sessionId, projectId, "detail");
+  const { result, attemptedPaths } = await requestFirstAvailablePath(
+    ctx,
+    paths,
+    15_000,
+  );
 
   if (!result.ok) {
     return {
       ok: false,
-      warning: `GET ${path} failed: ${result.status} ${result.statusText}`,
+      warning: formatReadFailure(attemptedPaths, result),
     };
   }
 
@@ -214,7 +213,7 @@ async function fetchRuntimeSession(
   if (!session) {
     return {
       ok: false,
-      warning: `GET ${path} returned no recognizable session object`,
+      warning: `GET ${attemptedPaths.at(-1)} returned no recognizable session object`,
     };
   }
 
@@ -234,21 +233,22 @@ async function fetchRuntimeTraces(
     }
   | { ok: false; warning: string }
 > {
-  const params = new URLSearchParams({
-    projectId: options.projectId,
-    limit: String(options.traceLimit ?? 250),
-  });
-  const path = `/api/runtime/sessions/${encodeURIComponent(options.sessionId)}/traces?${params.toString()}`;
-  const result = await requestStudioJson(ctx, {
-    method: "GET",
-    path,
-    timeoutMs: 30_000,
-  });
+  const paths = buildSessionReadPaths(
+    options.sessionId,
+    options.projectId,
+    "traces",
+    options.traceLimit ?? 250,
+  );
+  const { result, attemptedPaths } = await requestFirstAvailablePath(
+    ctx,
+    paths,
+    30_000,
+  );
 
   if (!result.ok) {
     return {
       ok: false,
-      warning: `GET ${path} failed: ${result.status} ${result.statusText}`,
+      warning: formatReadFailure(attemptedPaths, result),
     };
   }
 
@@ -266,6 +266,64 @@ async function fetchRuntimeTraces(
     traceMeta: extractTraceMeta(result.body) || undefined,
     traceTotal: extractTraceTotal(result.body) ?? undefined,
   };
+}
+
+type StudioJsonResult = Awaited<ReturnType<typeof requestStudioJson>>;
+
+function buildSessionReadPaths(
+  sessionId: string,
+  projectId: string,
+  resource: "detail" | "traces",
+  traceLimit = 250,
+): [string, string] {
+  const safeProjectId = encodeURIComponent(projectId);
+  const safeSessionId = encodeURIComponent(sessionId);
+  const suffix = resource === "traces" ? "/traces" : "";
+  const canonicalParams =
+    resource === "traces"
+      ? new URLSearchParams({ limit: String(traceLimit) })
+      : new URLSearchParams({ includeTraces: "false" });
+  const proxyParams = new URLSearchParams(canonicalParams);
+  proxyParams.set("projectId", projectId);
+
+  return [
+    `/api/projects/${safeProjectId}/sessions/${safeSessionId}${suffix}?${canonicalParams.toString()}`,
+    `/api/runtime/sessions/${safeSessionId}${suffix}?${proxyParams.toString()}`,
+  ];
+}
+
+async function requestFirstAvailablePath(
+  ctx: DebugContext,
+  paths: readonly [string, ...string[]],
+  timeoutMs: number,
+): Promise<{ result: StudioJsonResult; attemptedPaths: string[] }> {
+  const attemptedPaths: string[] = [];
+  let result: StudioJsonResult = await requestStudioJson(ctx, {
+    method: "GET",
+    path: paths[0],
+    timeoutMs,
+  });
+  attemptedPaths.push(paths[0]);
+  if (result.ok || result.status !== 404) {
+    return { result, attemptedPaths };
+  }
+
+  for (const path of paths.slice(1)) {
+    attemptedPaths.push(path);
+    result = await requestStudioJson(ctx, { method: "GET", path, timeoutMs });
+    if (result.ok || result.status !== 404) {
+      return { result, attemptedPaths };
+    }
+  }
+
+  return { result, attemptedPaths };
+}
+
+function formatReadFailure(
+  attemptedPaths: string[],
+  result: Exclude<StudioJsonResult, { ok: true }>,
+): string {
+  return `GET ${attemptedPaths.join(" then ")} failed: ${result.status} ${result.statusText}`;
 }
 
 function normalizeTraceEvent(

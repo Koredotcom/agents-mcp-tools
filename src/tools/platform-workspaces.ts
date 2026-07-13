@@ -13,18 +13,25 @@
  * runtime, so this tool rewrites the base URL to the Studio origin.
  */
 
-import { z } from 'zod';
-import type { DebugContext } from './index.js';
-import { buildStudioHeaders, deriveStudioUrl } from '../utils/studio-api.js';
-import { fetchWithTimeout } from '../utils/fetch.js';
+import { z } from "zod";
+import type { DebugContext } from "./index.js";
+import { buildStudioHeaders, deriveStudioUrl } from "../utils/studio-api.js";
+import { fetchWithTimeout } from "../utils/fetch.js";
+import {
+  readStoredCredentials,
+  writeStoredCredentials,
+} from "../client/credentials.js";
 
 // =============================================================================
 // SCHEMA
 // =============================================================================
 
 export const platformWorkspacesSchema = z.object({
-  action: z.enum(['list', 'switch', 'current']),
-  tenantId: z.string().optional().describe('Tenant ID to switch to (required for switch)'),
+  action: z.enum(["list", "switch", "current"]),
+  tenantId: z
+    .string()
+    .optional()
+    .describe("Tenant ID to switch to (required for switch)"),
 });
 
 type PlatformWorkspacesArgs = z.infer<typeof platformWorkspacesSchema>;
@@ -38,11 +45,15 @@ function success(data: unknown): string {
 }
 
 function error(message: string, hint?: string): string {
-  return JSON.stringify({ success: false, error: message, ...(hint ? { hint } : {}) });
+  return JSON.stringify({
+    success: false,
+    error: message,
+    ...(hint ? { hint } : {}),
+  });
 }
 
 function toRecord(data: unknown): Record<string, unknown> {
-  if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
+  if (data !== null && typeof data === "object" && !Array.isArray(data)) {
     return data as Record<string, unknown>;
   }
   return { data };
@@ -54,9 +65,9 @@ function toRecord(data: unknown): Record<string, unknown> {
  */
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) return null;
-    const payload = Buffer.from(parts[1], 'base64url').toString('utf-8');
+    const payload = Buffer.from(parts[1], "base64url").toString("utf-8");
     return JSON.parse(payload) as Record<string, unknown>;
   } catch {
     return null;
@@ -76,32 +87,32 @@ export async function platformWorkspaces(
 
   if (!baseUrl) {
     return error(
-      'Not connected. Call platform_connect first.',
-      'Run platform_connect with your serverUrl to establish a connection.',
+      "Not connected. Call platform_connect first.",
+      "Run platform_connect with your serverUrl to establish a connection.",
     );
   }
 
   const studioBase = deriveStudioUrl(baseUrl);
-  const headers = buildStudioHeaders(ctx);
+  const headers = buildStudioHeaders(ctx, studioBase);
 
-  if (!headers['Authorization']) {
+  if (!headers["Authorization"]) {
     return error(
-      'Not authenticated. Call platform_connect first.',
-      'Run platform_connect to authenticate before managing workspaces.',
+      "Not authenticated. Call platform_connect first.",
+      "Run platform_connect to authenticate before managing workspaces.",
     );
   }
 
   try {
     switch (action) {
       // ----- LIST WORKSPACES -----
-      case 'list': {
+      case "list": {
         const response = await fetchWithTimeout(
           `${studioBase}/api/auth/tenants`,
           { headers },
           10_000,
         );
         if (!response.ok) {
-          const body = await response.text().catch(() => '');
+          const body = await response.text().catch(() => "");
           return error(
             `GET /api/auth/tenants failed: ${response.status} ${response.statusText}`,
             body || undefined,
@@ -115,7 +126,7 @@ export async function platformWorkspaces(
           for (const tenant of data.tenants) {
             if (
               tenant &&
-              typeof tenant === 'object' &&
+              typeof tenant === "object" &&
               (tenant as Record<string, unknown>).tenantId === currentTenantId
             ) {
               (tenant as Record<string, unknown>).active = true;
@@ -131,10 +142,10 @@ export async function platformWorkspaces(
       }
 
       // ----- SWITCH WORKSPACE -----
-      case 'switch': {
+      case "switch": {
         if (!tenantId) {
           return error(
-            'tenantId is required for the switch action.',
+            "tenantId is required for the switch action.",
             'Use action="list" first to see available workspaces and their tenantIds.',
           );
         }
@@ -142,7 +153,7 @@ export async function platformWorkspaces(
         const response = await fetchWithTimeout(
           `${studioBase}/api/auth/tenants/switch`,
           {
-            method: 'POST',
+            method: "POST",
             headers,
             body: JSON.stringify({ tenantId }),
           },
@@ -150,7 +161,7 @@ export async function platformWorkspaces(
         );
 
         if (!response.ok) {
-          const body = await response.text().catch(() => '');
+          const body = await response.text().catch(() => "");
           if (response.status === 403) {
             return error(
               `Not a member of workspace ${tenantId}.`,
@@ -167,32 +178,43 @@ export async function platformWorkspaces(
           accessToken: string;
           tenantId: string;
           role: string;
+          expiresIn?: number;
           orgId?: string | null;
         };
 
-        // Update both HTTP and WS clients with the new workspace-scoped token
+        const wasWebSocketConnected = ctx.wsClient.isConnected();
+
+        // HTTP requests read the current token per call, while WebSocket auth is
+        // fixed during the handshake. Reconnect an open socket so subsequent
+        // debug events and session subscriptions use the selected workspace.
         ctx.httpClient.setAuthToken(result.accessToken);
         ctx.wsClient.setAuthToken(result.accessToken);
+        persistSwitchedWorkspaceToken(result.accessToken, result.expiresIn);
+        if (wasWebSocketConnected) {
+          ctx.wsClient.disconnect();
+          await ctx.wsClient.connect();
+        }
 
         return success({
-          status: 'switched',
+          status: "switched",
           tenantId: result.tenantId,
           role: result.role,
           orgId: result.orgId || null,
+          websocketReconnected: wasWebSocketConnected,
           message: `Switched to workspace ${result.tenantId} (role: ${result.role}). All subsequent API calls are scoped to this workspace.`,
         });
       }
 
       // ----- CURRENT WORKSPACE -----
-      case 'current': {
+      case "current": {
         const token = ctx.httpClient.getAuthToken();
         if (!token) {
-          return error('No auth token available. Call platform_connect first.');
+          return error("No auth token available. Call platform_connect first.");
         }
 
         const payload = decodeJwtPayload(token);
         if (!payload) {
-          return error('Could not decode auth token. It may be malformed.');
+          return error("Could not decode auth token. It may be malformed.");
         }
 
         return success({
@@ -214,9 +236,34 @@ export async function platformWorkspaces(
     const message = err instanceof Error ? err.message : String(err);
     return error(
       `platform_workspaces ${action} failed: ${message}`,
-      'Workspace endpoints are served by the Studio API (port 5173). Ensure Studio is running.',
+      "Workspace endpoints are served by the Studio API (port 5173). Ensure Studio is running.",
     );
   }
+}
+
+function persistSwitchedWorkspaceToken(
+  accessToken: string,
+  expiresIn?: number,
+): void {
+  const existing = readStoredCredentials();
+  const payload = decodeJwtPayload(accessToken);
+  const jwtExpiry =
+    typeof payload?.exp === "number" ? payload.exp * 1000 : null;
+  const expiresAt =
+    typeof expiresIn === "number" && expiresIn > 0
+      ? new Date(Date.now() + expiresIn * 1000).toISOString()
+      : jwtExpiry
+        ? new Date(jwtExpiry).toISOString()
+        : existing?.expiresAt;
+
+  if (!expiresAt) return;
+
+  writeStoredCredentials({
+    token: accessToken,
+    expiresAt,
+    ...(existing?.refreshToken ? { refreshToken: existing.refreshToken } : {}),
+    ...(existing?.email ? { email: existing.email } : {}),
+  });
 }
 
 /**

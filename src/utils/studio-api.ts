@@ -1,14 +1,19 @@
-import type { DebugContext } from '../tools/index.js';
-import { sanitizeResponse } from './sanitize.js';
-import { fetchWithTimeout } from './fetch.js';
-import { isRemoteUrl } from './url.js';
+import type { DebugContext } from "../tools/index.js";
+import { sanitizeResponse } from "./sanitize.js";
+import { fetchWithTimeout } from "./fetch.js";
+import { isRemoteUrl } from "./url.js";
 
 const DEFAULT_STUDIO_PORT = 5173;
 
 export function deriveStudioUrl(runtimeBaseUrl: string): string {
   try {
     const url = new URL(runtimeBaseUrl);
-    if (!isRemoteUrl(runtimeBaseUrl) && url.port && url.port !== '443' && url.port !== '80') {
+    if (
+      !isRemoteUrl(runtimeBaseUrl) &&
+      url.port &&
+      url.port !== "443" &&
+      url.port !== "80"
+    ) {
       url.port = String(DEFAULT_STUDIO_PORT);
     }
     return url.origin;
@@ -17,19 +22,25 @@ export function deriveStudioUrl(runtimeBaseUrl: string): string {
   }
 }
 
-export function buildStudioHeaders(ctx: DebugContext): Record<string, string> {
+export function buildStudioHeaders(
+  ctx: DebugContext,
+  studioBase?: string,
+): Record<string, string> {
+  const resolvedStudioBase =
+    studioBase ?? deriveStudioUrl(ctx.httpClient.getBaseUrl());
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
+    Origin: resolvedStudioBase,
   };
   const token = ctx.httpClient.getAuthToken();
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
 }
 
 export async function readResponseBody(response: Response): Promise<unknown> {
-  const text = await response.text().catch(() => '');
+  const text = await response.text().catch(() => "");
   if (!text) {
     return null;
   }
@@ -47,24 +58,26 @@ export async function postStudioJson(
   body: unknown,
   timeoutMs = 30_000,
 ): Promise<
-  { ok: true; body: unknown } | { ok: false; status: number; statusText: string; body: unknown }
+  | { ok: true; body: unknown }
+  | { ok: false; status: number; statusText: string; body: unknown }
 > {
-  return requestStudioJson(ctx, { method: 'POST', path, body, timeoutMs });
+  return requestStudioJson(ctx, { method: "POST", path, body, timeoutMs });
 }
 
 export async function requestStudioJson(
   ctx: DebugContext,
   input: {
-    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+    method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
     path: string;
     body?: unknown;
     timeoutMs?: number;
   },
 ): Promise<
-  { ok: true; body: unknown } | { ok: false; status: number; statusText: string; body: unknown }
+  | { ok: true; body: unknown }
+  | { ok: false; status: number; statusText: string; body: unknown }
 > {
   const studioBase = deriveStudioUrl(ctx.httpClient.getBaseUrl());
-  const headers = buildStudioHeaders(ctx);
+  const headers = buildStudioHeaders(ctx, studioBase);
   const init: RequestInit = {
     method: input.method,
     headers,
@@ -95,7 +108,7 @@ export async function requestStudioJson(
 export function formatStudioFailure(
   path: string,
   result: { status: number; statusText: string; body: unknown },
-  method = 'POST',
+  method = "POST",
 ): string {
   return JSON.stringify(
     {
@@ -106,7 +119,7 @@ export function formatStudioFailure(
       body: result.body,
       hint:
         result.status === 404
-          ? 'The connected Studio API may be older than this MCP tool. Update the platform or use debug_docs for the server-owned import contract.'
+          ? "The connected Studio API may be older than this MCP tool. Update the platform or use debug_docs for the server-owned import contract."
           : undefined,
     },
     null,
