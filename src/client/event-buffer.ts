@@ -5,17 +5,7 @@
  * Oldest events are evicted when the buffer is full.
  */
 
-import type {
-  TraceEventWithId,
-  TraceSearchFilter,
-  TraceEventType,
-} from "../types.js";
-import {
-  isErrorLikeTraceEvent,
-  safeStringify,
-  safeTimeMs,
-  traceEventIdentifiers,
-} from "../utils/trace-formatting.js";
+import type { TraceEventWithId, TraceSearchFilter, TraceEventType } from '../types.js';
 
 export class EventBuffer {
   private buffer: TraceEventWithId[] = [];
@@ -89,23 +79,17 @@ export class EventBuffer {
 
     // Filter by time range
     if (filter.startTime) {
-      events = events.filter((e) => {
-        const time = safeTimeMs(e.timestamp);
-        return time !== null && time >= filter.startTime!.getTime();
-      });
+      events = events.filter((e) => new Date(e.timestamp) >= filter.startTime!);
     }
     if (filter.endTime) {
-      events = events.filter((e) => {
-        const time = safeTimeMs(e.timestamp);
-        return time !== null && time <= filter.endTime!.getTime();
-      });
+      events = events.filter((e) => new Date(e.timestamp) <= filter.endTime!);
     }
 
     // Filter by text search in data
     if (filter.text) {
       const searchText = filter.text.toLowerCase();
       events = events.filter((e) => {
-        const dataStr = safeStringify(e.data).toLowerCase();
+        const dataStr = JSON.stringify(e.data).toLowerCase();
         return dataStr.includes(searchText);
       });
     }
@@ -113,9 +97,17 @@ export class EventBuffer {
     // Filter by error presence
     if (filter.hasError !== undefined) {
       if (filter.hasError) {
-        events = events.filter(isErrorLikeTraceEvent);
+        events = events.filter(
+          (e) =>
+            e.type === 'error' ||
+            (e.data && (e.data.error || e.data.errorType || e.data.errorMessage)),
+        );
       } else {
-        events = events.filter((e) => !isErrorLikeTraceEvent(e));
+        events = events.filter(
+          (e) =>
+            e.type !== 'error' &&
+            !(e.data && (e.data.error || e.data.errorType || e.data.errorMessage)),
+        );
       }
     }
 
@@ -126,23 +118,26 @@ export class EventBuffer {
    * Get errors and warnings
    */
   getErrors(): TraceEventWithId[] {
-    return this.buffer.filter(isErrorLikeTraceEvent);
+    return this.buffer.filter(
+      (e) =>
+        e.type === 'error' ||
+        e.type === 'escalation' ||
+        (e.data && (e.data.error || e.data.errorType || e.data.warning)),
+    );
   }
 
   /**
    * Get events by span ID
    */
   getBySpan(spanId: string): TraceEventWithId[] {
-    return this.buffer.filter(
-      (e) => e.spanId === spanId || e.parentSpanId === spanId,
-    );
+    return this.buffer.filter((e) => e.spanId === spanId || e.parentSpanId === spanId);
   }
 
   /**
    * Get event by ID
    */
   getById(id: string): TraceEventWithId | undefined {
-    return this.buffer.find((e) => traceEventIdentifiers(e).includes(id));
+    return this.buffer.find((e) => e.id === id);
   }
 
   /**

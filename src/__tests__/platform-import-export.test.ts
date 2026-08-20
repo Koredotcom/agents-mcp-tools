@@ -1,13 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { platformImportExport } from '../tools/platform-import-export.js';
 import type { DebugContext } from '../tools/index.js';
-import { fetchWithTimeout } from '../utils/fetch.js';
+import type { StudioApiDependencies } from '../utils/studio-api.js';
 
-vi.mock('../utils/fetch.js', () => ({
-  fetchWithTimeout: vi.fn(),
-}));
+interface FetchCall {
+  url: string;
+  options: RequestInit;
+  timeoutMs: number;
+}
 
-const fetchMock = vi.mocked(fetchWithTimeout);
+interface FetchRecorder {
+  calls: FetchCall[];
+  dependencies: StudioApiDependencies;
+}
 
 const ctx = {
   httpClient: {
@@ -16,27 +21,22 @@ const ctx = {
   },
 } as unknown as DebugContext;
 
-beforeEach(() => {
-  fetchMock.mockReset();
-});
-
 describe('platformImportExport', () => {
   it('auto-acknowledges non-blocking preview issues before import/apply', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          previewDigest: 'digest-1',
-          preview: {
-            hasBlockingIssues: false,
-            issues: [
-              { id: 'issue-warning', blocking: false, severity: 'warning' },
-              { id: 'issue-info', blocking: false, severity: 'info' },
-            ],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(jsonResponse({ success: true, applied: true }));
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({
+        success: true,
+        previewDigest: 'digest-1',
+        preview: {
+          hasBlockingIssues: false,
+          issues: [
+            { id: 'issue-warning', blocking: false, severity: 'warning' },
+            { id: 'issue-info', blocking: false, severity: 'info' },
+          ],
+        },
+      }),
+      jsonResponse({ success: true, applied: true }),
+    );
 
     const result = JSON.parse(
       await platformImportExport(
@@ -50,6 +50,7 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       success: boolean;
@@ -70,30 +71,29 @@ describe('platformImportExport', () => {
       nonBlockingIssueCount: 2,
     });
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      'http://localhost:5173/api/projects/proj_123/import/preview',
-      expect.objectContaining({ method: 'POST' }),
-      30_000,
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      'http://localhost:5173/api/projects/proj_123/import/apply',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.stringContaining('"previewDigest":"digest-1"'),
-      }),
-      30_000,
-    );
+    expect(fetchRecorder.calls[0]).toMatchObject({
+      url: 'http://localhost:5173/api/projects/proj_123/import/preview',
+      options: { method: 'POST' },
+      timeoutMs: 30_000,
+    });
+    expect(fetchRecorder.calls[1]).toMatchObject({
+      url: 'http://localhost:5173/api/projects/proj_123/import/apply',
+      options: { method: 'POST' },
+      timeoutMs: 30_000,
+    });
 
-    const applyBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
-      acknowledgedIssueIds: string[];
-    };
-    expect(applyBody.acknowledgedIssueIds).toEqual(['issue-warning', 'issue-info']);
+    const applyBody = readCallBody<{ previewDigest: string; acknowledgedIssueIds: string[] }>(
+      fetchRecorder,
+      1,
+    );
+    expect(applyBody).toMatchObject({
+      previewDigest: 'digest-1',
+      acknowledgedIssueIds: ['issue-warning', 'issue-info'],
+    });
   });
 
   it('preserves server error bodies for import preview failures', async () => {
-    fetchMock.mockResolvedValueOnce(
+    const fetchRecorder = createFetchRecorder(
       jsonResponse(
         {
           success: false,
@@ -116,6 +116,7 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       success: boolean;
@@ -129,10 +130,11 @@ describe('platformImportExport', () => {
       code: 'INVALID_LAYERS',
       message: 'Unsupported import layer(s): behavior_profiles',
     });
+    expect(fetchRecorder.calls).toHaveLength(1);
   });
 
   it('normalizes import-style data.files before sending import previews', async () => {
-    fetchMock.mockResolvedValueOnce(
+    const fetchRecorder = createFetchRecorder(
       jsonResponse({
         success: true,
         preview: { hasBlockingIssues: false, issues: [] },
@@ -153,6 +155,7 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       success: boolean;
@@ -163,10 +166,10 @@ describe('platformImportExport', () => {
     expect(result.data.warnings).toContain('Stripped common archive prefix "wrapped-project/".');
     expect(result.data.source).toEqual({ kind: 'inline' });
 
-    const previewBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as {
+    const previewBody = readCallBody<{
       deleteUnmatched: boolean;
       files: Record<string, string>;
-    };
+    }>(fetchRecorder, 0);
     expect(previewBody).toMatchObject({
       deleteUnmatched: true,
       files: {
@@ -177,7 +180,7 @@ describe('platformImportExport', () => {
   });
 
   it('does not apply imports when preview still has blocking issues', async () => {
-    fetchMock.mockResolvedValueOnce(
+    const fetchRecorder = createFetchRecorder(
       jsonResponse({
         success: true,
         previewDigest: 'digest-blocked',
@@ -202,6 +205,7 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean; needsResolution: boolean; previewDigest: string };
 
@@ -210,31 +214,28 @@ describe('platformImportExport', () => {
       needsResolution: true,
       previewDigest: 'digest-blocked',
     });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchRecorder.calls).toHaveLength(1);
   });
 
   it('includes server response body when entry-agent patch fails after apply', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          previewDigest: 'digest-1',
-          preview: {
-            hasBlockingIssues: false,
-            issues: [],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(jsonResponse({ success: true, applied: true }))
-      .mockResolvedValueOnce(
-        jsonResponse(
-          {
-            success: false,
-            error: { code: 'PROJECT_LOCKED', message: 'Project is locked' },
-          },
-          { status: 423, statusText: 'Locked' },
-        ),
-      );
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({
+        success: true,
+        previewDigest: 'digest-1',
+        preview: {
+          hasBlockingIssues: false,
+          issues: [],
+        },
+      }),
+      jsonResponse({ success: true, applied: true }),
+      jsonResponse(
+        {
+          success: false,
+          error: { code: 'PROJECT_LOCKED', message: 'Project is locked' },
+        },
+        { status: 423, statusText: 'Locked' },
+      ),
+    );
 
     const result = JSON.parse(
       await platformImportExport(
@@ -247,16 +248,25 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean; warning: string };
 
     expect(result.success).toBe(true);
     expect(result.warning).toContain('PROJECT_LOCKED');
     expect(result.warning).toContain('Project is locked');
+    expect(fetchRecorder.calls[2]).toMatchObject({
+      url: 'http://localhost:5173/api/projects/proj_123',
+      options: { method: 'PATCH' },
+      timeoutMs: 10_000,
+    });
+    expect(readCallBody<{ entryAgentName: string }>(fetchRecorder, 2)).toEqual({
+      entryAgentName: 'Support',
+    });
   });
 
   it('refuses auto-acknowledgement when preview issue IDs are missing', async () => {
-    fetchMock.mockResolvedValueOnce(
+    const fetchRecorder = createFetchRecorder(
       jsonResponse({
         success: true,
         previewDigest: 'digest-unstable',
@@ -279,6 +289,7 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean; error: string; nonBlockingIssueCount: number };
 
@@ -287,22 +298,21 @@ describe('platformImportExport', () => {
       nonBlockingIssueCount: 1,
     });
     expect(result.error).toContain('stable IDs');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchRecorder.calls).toHaveLength(1);
   });
 
   it('auto-previews when callers provide only a partial acknowledgement by default', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          previewDigest: 'fresh-digest',
-          preview: {
-            hasBlockingIssues: false,
-            issues: [{ id: 'warning-id', blocking: false, severity: 'warning' }],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(jsonResponse({ success: true, applied: true }));
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({
+        success: true,
+        previewDigest: 'fresh-digest',
+        preview: {
+          hasBlockingIssues: false,
+          issues: [{ id: 'warning-id', blocking: false, severity: 'warning' }],
+        },
+      }),
+      jsonResponse({ success: true, applied: true }),
+    );
 
     const result = JSON.parse(
       await platformImportExport(
@@ -316,33 +326,31 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean };
 
     expect(result.success).toBe(true);
-    const applyBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
-      previewDigest: string;
-      acknowledgedIssueIds: string[];
-    };
-    expect(applyBody).toMatchObject({
+    expect(
+      readCallBody<{ previewDigest: string; acknowledgedIssueIds: string[] }>(fetchRecorder, 1),
+    ).toMatchObject({
       previewDigest: 'fresh-digest',
       acknowledgedIssueIds: ['warning-id'],
     });
   });
 
   it('applies without a preview digest when preview has no acknowledgement-required issues', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          preview: {
-            hasBlockingIssues: false,
-            nonBlockingIssueCount: 0,
-            issues: [],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(jsonResponse({ success: true, applied: true }));
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({
+        success: true,
+        preview: {
+          hasBlockingIssues: false,
+          nonBlockingIssueCount: 0,
+          issues: [],
+        },
+      }),
+      jsonResponse({ success: true, applied: true }),
+    );
 
     const result = JSON.parse(
       await platformImportExport(
@@ -360,18 +368,19 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean };
 
     expect(result.success).toBe(true);
-    const previewBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as {
+    const previewBody = readCallBody<{
       previewDigest?: string;
       acknowledgedIssueIds?: string[];
-    };
-    const applyBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
+    }>(fetchRecorder, 0);
+    const applyBody = readCallBody<{
       previewDigest?: string;
       acknowledgedIssueIds: string[];
-    };
+    }>(fetchRecorder, 1);
     expect(previewBody.previewDigest).toBeUndefined();
     expect(previewBody.acknowledgedIssueIds).toBeUndefined();
     expect(applyBody.previewDigest).toBeUndefined();
@@ -379,6 +388,8 @@ describe('platformImportExport', () => {
   });
 
   it('rejects partial manual acknowledgements when auto-ack is disabled', async () => {
+    const fetchRecorder = createFetchRecorder();
+
     const result = JSON.parse(
       await platformImportExport(
         {
@@ -392,14 +403,37 @@ describe('platformImportExport', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as { success: boolean; error: string };
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('requires both previewDigest and acknowledgedIssueIds');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchRecorder.calls).toHaveLength(0);
   });
 });
+
+function createFetchRecorder(...responses: Response[]): FetchRecorder {
+  const calls: FetchCall[] = [];
+  const queue = [...responses];
+  const fetchWithTimeout: StudioApiDependencies['fetchWithTimeout'] = async (
+    url,
+    options = {},
+    timeoutMs = 5000,
+  ) => {
+    calls.push({ url, options, timeoutMs });
+    return queue.shift() ?? jsonResponse({});
+  };
+
+  return {
+    calls,
+    dependencies: { fetchWithTimeout },
+  };
+}
+
+function readCallBody<T>(fetchRecorder: FetchRecorder, index: number): T {
+  return JSON.parse(fetchRecorder.calls[index]?.options.body as string) as T;
+}
 
 function jsonResponse(
   body: unknown,

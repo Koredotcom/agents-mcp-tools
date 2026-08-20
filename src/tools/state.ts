@@ -4,25 +4,11 @@
  * Get the current session state including context, flow state, etc.
  */
 
-import { z } from "zod";
-import type { DebugContext } from "./index.js";
-import {
-  formatEvidenceDiagnostics,
-  loadSessionEvidence,
-} from "../utils/session-evidence.js";
-import { safeIsoTimestamp, safeStringify } from "../utils/trace-formatting.js";
+import { z } from 'zod';
+import type { DebugContext } from './index.js';
 
 export const getCurrentStateSchema = z.object({
-  sessionId: z
-    .string()
-    .optional()
-    .describe("Session ID (uses active session if not specified)"),
-  projectId: z
-    .string()
-    .optional()
-    .describe(
-      "Project ID for persisted Studio/UI sessions (enables runtime proxy fallback)",
-    ),
+  sessionId: z.string().optional().describe('Session ID (uses active session if not specified)'),
 });
 
 export type GetCurrentStateArgs = z.infer<typeof getCurrentStateSchema>;
@@ -31,43 +17,37 @@ export async function getCurrentState(
   args: GetCurrentStateArgs,
   ctx: DebugContext,
 ): Promise<string> {
-  const evidenceResult = await loadSessionEvidence(ctx, {
-    sessionId: args.sessionId,
-    projectId: args.projectId,
-    fetchTraces: false,
-    preferRuntime: Boolean(args.projectId),
-  });
+  // Use active session if not specified
+  const sessionId = args.sessionId || ctx.sessionStore.getActiveSessionId();
 
-  if (!evidenceResult.ok) {
+  if (!sessionId) {
     return JSON.stringify({
       success: false,
-      sessionId: evidenceResult.sessionId,
-      error: evidenceResult.error,
-      hint: evidenceResult.hint,
-      diagnostics: evidenceResult.diagnostics,
+      error: 'No session specified and no active session. Load an agent first.',
     });
   }
 
-  const evidence = evidenceResult.evidence;
-  const sessionId = evidence.sessionId;
-  const session = evidence.session;
+  const session = ctx.sessionStore.getSession(sessionId);
+  if (!session) {
+    return JSON.stringify({
+      success: false,
+      error: `Session not found: ${sessionId}`,
+    });
+  }
 
   // If we have state in the session store, return it
-  if (evidence.state) {
-    return safeStringify({
+  if (session.state) {
+    return JSON.stringify({
       success: true,
       sessionId,
-      agentId: evidence.agentId,
-      state: evidence.state,
-      lastActivityAt: session?.lastActivityAt
-        ? safeIsoTimestamp(session.lastActivityAt)
-        : undefined,
-      evidence: formatEvidenceDiagnostics(evidence),
+      agentId: session.agentId,
+      state: session.state,
+      lastActivityAt: session.lastActivityAt,
     });
   }
 
   // If connected, request fresh state from server
-  if (session && ctx.wsClient.isConnected()) {
+  if (ctx.wsClient.isConnected()) {
     return new Promise((resolve) => {
       let resolved = false;
       const timeout = setTimeout(() => {
@@ -76,7 +56,7 @@ export async function getCurrentState(
           resolve(
             JSON.stringify({
               success: false,
-              error: "Timeout waiting for state update",
+              error: 'Timeout waiting for state update',
             }),
           );
         }
@@ -97,12 +77,12 @@ export async function getCurrentState(
           if (!resolved) {
             resolved = true;
             resolve(
-              safeStringify({
+              JSON.stringify({
                 success: true,
                 sessionId,
                 agentId: session.agentId,
                 state,
-                source: "fresh",
+                source: 'fresh',
               }),
             );
           }
@@ -121,11 +101,8 @@ export async function getCurrentState(
   return JSON.stringify({
     success: true,
     sessionId,
-    agentId: evidence.agentId,
+    agentId: session.agentId,
     state: null,
-    evidence: formatEvidenceDiagnostics(evidence),
-    message: args.projectId
-      ? "No state snapshot was available in the persisted session payload."
-      : "No state available yet. Send a message to the agent first, or pass projectId for a completed Studio/UI session.",
+    message: 'No state available yet. Send a message to the agent first.',
   });
 }

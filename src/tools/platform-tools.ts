@@ -13,18 +13,42 @@ import type { DebugContext } from './index.js';
 import { buildStudioHeaders, deriveStudioUrl } from '../utils/studio-api.js';
 import { fetchWithTimeout } from '../utils/fetch.js';
 import { validatePathParam } from '../utils/validate.js';
-import { sanitizeResponse } from '../utils/sanitize.js';
+import { findSensitiveFieldPath, sanitizeResponse } from '../utils/sanitize.js';
 
 // =============================================================================
 // SCHEMA
 // =============================================================================
 
+const MAX_LIST_LIMIT = 200;
+
 export const platformToolsSchema = z.object({
   action: z.enum(['list', 'get', 'create', 'update', 'delete', 'test']),
   projectId: z.string().describe('Project ID'),
+  page: z.number().int().min(1).optional().describe('Page number for list (starts at 1)'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_LIST_LIMIT)
+    .optional()
+    .describe(`Tools per page for list (maximum ${MAX_LIST_LIMIT})`),
   toolId: z.string().optional().describe('Tool ID (for get, update, delete, test)'),
+  input: z
+    .record(z.unknown())
+    .optional()
+    .describe('Input object for tool execution (for test); string values are passed unchanged'),
+  timeoutMs: z
+    .number()
+    .int()
+    .min(1_000)
+    .max(300_000)
+    .optional()
+    .describe('Tool test timeout in milliseconds (for test)'),
   name: z.string().optional().describe('Tool name (for create)'),
-  type: z.string().optional().describe('Tool type (for create: http, function, mcp)'),
+  type: z
+    .string()
+    .optional()
+    .describe('Tool type (for create: http, sandbox, mcp, workflow, integration, searchai, table)'),
   definition: z
     .record(z.unknown())
     .optional()
@@ -33,9 +57,24 @@ export const platformToolsSchema = z.object({
     .boolean()
     .optional()
     .describe('Set to true to confirm destructive operations (delete)'),
+  force: z
+    .boolean()
+    .optional()
+    .describe(
+      'Delete the tool even when agents or workflows still reference it (delete). ' +
+        'Without this the API returns 409 listing the consumers.',
+    ),
 });
 
-type PlatformToolsArgs = z.infer<typeof platformToolsSchema>;
+export type PlatformToolsArgs = z.infer<typeof platformToolsSchema>;
+
+export interface PlatformToolsDependencies {
+  fetchWithTimeout: typeof fetchWithTimeout;
+}
+
+const defaultPlatformToolsDependencies: PlatformToolsDependencies = {
+  fetchWithTimeout,
+};
 
 // =============================================================================
 // HELPERS
@@ -46,27 +85,52 @@ function success(data: unknown): string {
 }
 
 function error(message: string, hint?: string): string {
-  return JSON.stringify({ success: false, error: message, ...(hint ? { hint } : {}) });
+  return JSON.stringify(
+    sanitizeResponse({ success: false, error: message, ...(hint ? { hint } : {}) }),
+  );
 }
 
 // =============================================================================
 // HANDLER
 // =============================================================================
 
-export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext): Promise<string> {
-  const { action, projectId, toolId, name, type, definition, confirm } = args;
+export async function platformTools(
+  args: PlatformToolsArgs,
+  ctx: DebugContext,
+  dependencies: PlatformToolsDependencies = defaultPlatformToolsDependencies,
+): Promise<string> {
+  const {
+    action,
+    projectId,
+    page,
+    limit,
+    toolId,
+    input,
+    timeoutMs,
+    name,
+    type,
+    definition,
+    confirm,
+    force,
+  } = args;
   const studioUrl = deriveStudioUrl(ctx.httpClient.getBaseUrl());
-  const headers = buildStudioHeaders(ctx);
+  const headers = buildStudioHeaders(ctx, studioUrl);
   const safeProjectId = validatePathParam(projectId, 'projectId');
   const basePath = `${studioUrl}/api/projects/${safeProjectId}/tools`;
+  const fetchOperation = dependencies.fetchWithTimeout;
 
   try {
     switch (action) {
       // ----- LIST -----
       case 'list': {
-        const response = await fetchWithTimeout(basePath, { headers }, 10_000);
+        const searchParams = new URLSearchParams();
+        if (page !== undefined) searchParams.set('page', String(page));
+        if (limit !== undefined) searchParams.set('limit', String(limit));
+        const query = searchParams.toString();
+        const url = query ? `${basePath}?${query}` : basePath;
+        const response = await fetchOperation(url, { headers }, 10_000);
         if (!response.ok) {
-          return error(`GET ${basePath} failed: ${response.status} ${response.statusText}`);
+          return error(`GET ${url} failed: ${response.status} ${response.statusText}`);
         }
         const data = await response.json();
         return success(data);
@@ -79,7 +143,7 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
         }
         const safeToolId = validatePathParam(toolId, 'toolId');
         const url = `${basePath}/${safeToolId}`;
-        const response = await fetchWithTimeout(url, { headers }, 10_000);
+        const response = await fetchOperation(url, { headers }, 10_000);
         if (!response.ok) {
           return error(`GET ${url} failed: ${response.status} ${response.statusText}`);
         }
@@ -89,11 +153,15 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
 
       // ----- CREATE -----
       case 'create': {
+        const unsafePath = findSensitiveFieldPath({ name, type, definition });
+        if (unsafePath) {
+          return error(`Raw credential field "${unsafePath}" is not allowed in MCP arguments.`);
+        }
         const body: Record<string, unknown> = { ...definition };
         if (name) body.name = name;
-        if (type) body.type = type;
+        if (type) body.toolType = type;
 
-        const response = await fetchWithTimeout(
+        const response = await fetchOperation(
           basePath,
           {
             method: 'POST',
@@ -116,12 +184,15 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
           return error('toolId is required for the "update" action.');
         }
         const safeToolId = validatePathParam(toolId, 'toolId');
+        const unsafePath = findSensitiveFieldPath({ name, definition });
+        if (unsafePath) {
+          return error(`Raw credential field "${unsafePath}" is not allowed in MCP arguments.`);
+        }
         const url = `${basePath}/${safeToolId}`;
         const body: Record<string, unknown> = { ...definition };
         if (name) body.name = name;
-        if (type) body.type = type;
 
-        const response = await fetchWithTimeout(
+        const response = await fetchOperation(
           url,
           {
             method: 'PUT',
@@ -151,8 +222,11 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
           });
         }
         const safeToolId = validatePathParam(toolId, 'toolId');
-        const url = `${basePath}/${safeToolId}`;
-        const response = await fetchWithTimeout(
+        // ABLP-3265: the API 409s when agents or workflow nodes still reference
+        // the tool. Surface that body so the caller sees the consumers instead
+        // of a bare status line, and only bypass it on an explicit `force`.
+        const url = `${basePath}/${safeToolId}${force === true ? '?force=true' : ''}`;
+        const response = await fetchOperation(
           url,
           {
             method: 'DELETE',
@@ -161,7 +235,8 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
           10_000,
         );
         if (!response.ok) {
-          return error(`DELETE ${url} failed: ${response.status} ${response.statusText}`);
+          const text = await response.text().catch(() => '');
+          return error(`DELETE ${url} failed: ${response.status} ${response.statusText}`, text);
         }
         return success({ deleted: true, toolId });
       }
@@ -173,13 +248,17 @@ export async function platformTools(args: PlatformToolsArgs, ctx: DebugContext):
         }
         const safeToolId = validatePathParam(toolId, 'toolId');
         const url = `${basePath}/${safeToolId}/test`;
-        const response = await fetchWithTimeout(
+        const response = await fetchOperation(
           url,
           {
             method: 'POST',
             headers,
+            body: JSON.stringify({
+              ...(input !== undefined ? { input } : {}),
+              ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+            }),
           },
-          15_000,
+          timeoutMs ?? 15_000,
         );
         if (!response.ok) {
           const text = await response.text().catch(() => '');

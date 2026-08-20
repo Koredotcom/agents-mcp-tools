@@ -9,7 +9,11 @@ import { promises as fs } from 'node:fs';
 import { z } from 'zod';
 import type { DebugContext } from './index.js';
 import { loadPackageFiles, readPackageFilesFromData } from '../utils/package-files.js';
-import { formatStudioFailure, postStudioJson } from '../utils/studio-api.js';
+import {
+  formatStudioFailure,
+  postStudioJson,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 
 export const debugWhyTranscriptFailedSchema = z.object({
   path: z.string().optional().describe('Local project folder or .zip path to inspect'),
@@ -27,6 +31,7 @@ type DebugWhyTranscriptFailedArgs = z.infer<typeof debugWhyTranscriptFailedSchem
 export async function debugWhyTranscriptFailed(
   args: DebugWhyTranscriptFailedArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const loaded = await loadPackageFiles({
@@ -35,10 +40,16 @@ export async function debugWhyTranscriptFailed(
     });
     const transcript = await loadTranscript(args);
     const endpointPath = '/api/abl/package/diagnose-transcript';
-    const result = await postStudioJson(ctx, endpointPath, {
-      files: loaded.files,
-      transcript,
-    });
+    const result = await postStudioJson(
+      ctx,
+      endpointPath,
+      {
+        files: loaded.files,
+        transcript,
+      },
+      30_000,
+      dependencies,
+    );
 
     if (!result.ok) {
       return formatStudioFailure(endpointPath, result);

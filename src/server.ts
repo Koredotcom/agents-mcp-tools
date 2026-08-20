@@ -5,37 +5,72 @@
  * debug, and analysis workflows.
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import {
   CallToolRequestSchema,
+  GetPromptRequestSchema,
+  ListPromptsRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 
-import { WebSocketClient } from "./client/websocket-client.js";
-import { HttpClient } from "./client/http-client.js";
-import { SessionStore } from "./store/session-store.js";
-import { TraceStore } from "./store/trace-store.js";
+import { WebSocketClient } from './client/websocket-client.js';
+import { HttpClient } from './client/http-client.js';
+import { SessionStore } from './store/session-store.js';
+import { TraceStore } from './store/trace-store.js';
 import {
   authenticate as authCascade,
   type AuthResult,
   type AuthOptions,
-} from "./client/auth-client.js";
-import { deriveUrls } from "./utils/url.js";
-import { DEFAULT_HTTP_URL, DEFAULT_WS_URL } from "./constants.js";
-import {
-  tools,
-  getTool,
-  zodToJsonSchema,
-  type DebugContext,
-} from "./tools/index.js";
+} from './client/auth-client.js';
+import { deriveUrls } from './utils/url.js';
+import { DEFAULT_HTTP_URL, DEFAULT_WS_URL } from './constants.js';
+import { sanitizeResponse, sanitizeResponseBounded } from './utils/sanitize.js';
+import { effectiveInputSchema, tools, getTool, type DebugContext } from './tools/index.js';
 import {
   ARCH_MCP_LOG_PREFIX,
   ARCH_MCP_SERVER_NAME,
+  ARCH_MCP_SERVER_VERSION,
   formatArchToolDescription,
-} from "./tools/persona.js";
-import { safeStringify } from "./utils/trace-formatting.js";
+} from './tools/persona.js';
+import type {
+  ProjectBuilderDomainProvider,
+  ProjectBuilderDomainRegistry,
+} from './project-building/contracts.js';
+import { createProjectBuilderResult } from './project-building/contracts.js';
+import {
+  createProductionProjectBuilderDomainRegistry,
+  createProjectBuilderDomainRegistry,
+} from './project-building/domain-registry.js';
+import {
+  getProjectBuilderPrompt,
+  listProjectBuilderPrompts,
+  listProjectBuilderResources,
+  listProjectBuilderResourceTemplates,
+  readProjectBuilderResource,
+} from './project-building/discovery.js';
+import type { ProjectBuilderStudioTransportDependencies } from './project-building/studio-transport.js';
+import {
+  createKnowledgeCatalogReader,
+  getKnowledgePrompt,
+  isKnowledgePrompt,
+  isKnowledgeResourceUri,
+  listKnowledgePrompts,
+  listKnowledgeResources,
+  listKnowledgeResourceTemplates,
+  readKnowledgeResource,
+  type KnowledgeCatalogReader,
+} from './knowledge/discovery.js';
+import type { ArchKnowledgeCatalog } from './knowledge/contracts.js';
+
+const PROJECT_BUILDER_INSTRUCTIONS =
+  'Use platform_project_builder to discover registered domains and authoritative dependencies before planning. Continue durable work with platform_project_builder_operations. Workflow is the first provider, not a special client-side convention. Never send raw secrets; use opaque auth-profile and integration references. A consumed action with an unknown outcome must be verified, never retried blindly.';
+
+type SplitPortDebugContext = DebugContext & { readonly studioBaseUrl?: string };
 
 export interface MCPDebugServerOptions {
   /** Single server URL — derives both HTTP and WS URLs automatically */
@@ -44,6 +79,14 @@ export interface MCPDebugServerOptions {
   wsUrl?: string;
   /** @deprecated Use serverUrl instead */
   httpUrl?: string;
+  /** Explicit Studio origin when Studio is not co-hosted with Runtime. */
+  studioUrl?: string;
+  /** Test/embedding-only provider injection. Production registers workflow only. */
+  projectBuilderProviders?: readonly ProjectBuilderDomainProvider[];
+  /** Narrow transport injection for embedding and protocol-level compatibility tests. */
+  projectBuilderTransportDependencies?: ProjectBuilderStudioTransportDependencies;
+  /** Optional catalog source for embedding and failure-isolation verification. */
+  knowledgeCatalogFactory?: () => ArchKnowledgeCatalog;
 }
 
 export class MCPDebugServer {
@@ -52,7 +95,9 @@ export class MCPDebugServer {
   private httpClient: HttpClient;
   private sessionStore: SessionStore;
   private traceStore: TraceStore;
-  private context: DebugContext;
+  private context: SplitPortDebugContext;
+  private projectBuilderRegistry: ProjectBuilderDomainRegistry;
+  private knowledgeCatalogReader: KnowledgeCatalogReader;
 
   constructor(options: MCPDebugServerOptions = {}) {
     let wsUrl: string | undefined;
@@ -79,6 +124,10 @@ export class MCPDebugServer {
 
     this.sessionStore = new SessionStore();
     this.traceStore = new TraceStore();
+    this.projectBuilderRegistry = options.projectBuilderProviders
+      ? createProjectBuilderDomainRegistry(options.projectBuilderProviders)
+      : createProductionProjectBuilderDomainRegistry();
+    this.knowledgeCatalogReader = createKnowledgeCatalogReader(options.knowledgeCatalogFactory);
 
     // Create context for tools
     this.context = {
@@ -87,6 +136,9 @@ export class MCPDebugServer {
       sessionStore: this.sessionStore,
       traceStore: this.traceStore,
       authenticate: (options?: AuthOptions) => this.authenticate(options),
+      projectBuilderRegistry: this.projectBuilderRegistry,
+      studioBaseUrl: options.studioUrl,
+      projectBuilderTransportDependencies: options.projectBuilderTransportDependencies,
     };
 
     // Set up WebSocket event handlers
@@ -96,12 +148,15 @@ export class MCPDebugServer {
     this.server = new Server(
       {
         name: ARCH_MCP_SERVER_NAME,
-        version: "1.0.0",
+        version: ARCH_MCP_SERVER_VERSION,
       },
       {
         capabilities: {
           tools: {},
+          resources: {},
+          prompts: {},
         },
+        instructions: PROJECT_BUILDER_INSTRUCTIONS,
       },
     );
 
@@ -140,21 +195,19 @@ export class MCPDebugServer {
 
     // Handle connection status
     this.wsClient.onConnected = () => {
-      console.error(`${ARCH_MCP_LOG_PREFIX} Connected to server`);
+      writeMcpLog('info', 'Connected to server');
     };
 
     this.wsClient.onDisconnected = () => {
-      console.error(`${ARCH_MCP_LOG_PREFIX} Disconnected from server`);
+      writeMcpLog('info', 'Disconnected from server');
     };
 
     this.wsClient.onError = (message) => {
-      console.error(`${ARCH_MCP_LOG_PREFIX} WebSocket error:`, message);
+      writeMcpLog('error', 'WebSocket error', { message });
     };
 
     this.wsClient.onInfo = (message, configured) => {
-      console.error(
-        `${ARCH_MCP_LOG_PREFIX} ${message} (API configured: ${configured})`,
-      );
+      writeMcpLog('info', message, { apiConfigured: configured });
     };
   }
 
@@ -168,7 +221,9 @@ export class MCPDebugServer {
         tools: tools.map((tool) => ({
           name: tool.name,
           description: formatArchToolDescription(tool),
-          inputSchema: zodToJsonSchema(tool.schema),
+          inputSchema: effectiveInputSchema(tool),
+          ...(tool.outputSchema ? { outputSchema: tool.outputSchema } : {}),
+          ...(tool.annotations ? { annotations: tool.annotations } : {}),
         })),
       };
     });
@@ -182,8 +237,8 @@ export class MCPDebugServer {
         return {
           content: [
             {
-              type: "text",
-              text: safeStringify(formatUnknownToolError(name)),
+              type: 'text',
+              text: JSON.stringify(sanitizeResponse({ error: `Unknown tool: ${name}` })),
             },
           ],
           isError: true,
@@ -197,42 +252,108 @@ export class MCPDebugServer {
         // Execute the tool
         const result = await tool.handler(parsedArgs, this.context);
 
+        if (typeof result === 'string') {
+          return { content: [{ type: 'text', text: result }] };
+        }
         return {
-          content: [
-            {
-              type: "text",
-              text: result,
-            },
-          ],
+          content: [...result.content],
+          structuredContent: result.structuredContent as unknown as Record<string, unknown>,
+          ...(result.isError ? { isError: true } : {}),
         };
       } catch (error) {
-        const errorInfo = formatToolCallError(name, error);
-        const message =
-          typeof errorInfo.error === "string"
-            ? errorInfo.error
-            : "Unknown error";
+        const rawMessage = error instanceof Error ? error.message : 'Unknown error';
+        const message = String(sanitizeResponse(rawMessage));
         const errorName = error instanceof Error ? error.name : undefined;
         const errorCode = (error as { code?: string }).code;
         const errorCause = error instanceof Error ? error.cause : undefined;
-
-        console.error(`${ARCH_MCP_LOG_PREFIX} Tool "${name}" error:`, {
+        const safeDiagnostics = safeSanitizeDiagnostic({
           name: errorName,
           code: errorCode,
           message,
           cause: errorCause instanceof Error ? errorCause.message : errorCause,
         });
 
+        writeMcpLog('error', 'Tool request failed', { tool: name, diagnostics: safeDiagnostics });
+
+        if (name === 'platform_project_builder' || name === 'platform_project_builder_operations') {
+          const result = createProjectBuilderResult(name, null, {
+            code: 'PROJECT_BUILDER_INVALID_REQUEST',
+            message,
+            retryable: false,
+            nextActions: [
+              {
+                action: 'inspect_schema',
+                description: 'Inspect the tool input schema and registered provider actions.',
+              },
+            ],
+          });
+          return {
+            content: [...result.content],
+            structuredContent: result.structuredContent as unknown as Record<string, unknown>,
+            isError: true,
+          };
+        }
+
+        const errorInfo: Record<string, unknown> = { error: message };
+        if (errorName && errorName !== 'Error') errorInfo.errorName = errorName;
+        if (errorCode) errorInfo.errorCode = errorCode;
+
         return {
           content: [
             {
-              type: "text",
-              text: safeStringify(errorInfo),
+              type: 'text',
+              text: JSON.stringify(sanitizeResponse(errorInfo)),
             },
           ],
           isError: true,
         };
       }
     });
+
+    this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: [
+        ...listProjectBuilderResources(this.projectBuilderRegistry),
+        ...listKnowledgeResources(),
+      ],
+    }));
+
+    this.server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+      resourceTemplates: [
+        ...listProjectBuilderResourceTemplates(),
+        ...listKnowledgeResourceTemplates(),
+      ],
+    }));
+
+    this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+      if (isKnowledgeResourceUri(request.params.uri)) {
+        return readKnowledgeResource(request.params.uri, this.knowledgeCatalogReader);
+      }
+      return readProjectBuilderResource(
+        request.params.uri,
+        this.projectBuilderRegistry,
+        this.context,
+      );
+    });
+
+    this.server.setRequestHandler(ListPromptsRequestSchema, async () => ({
+      prompts: [...listProjectBuilderPrompts(), ...listKnowledgePrompts()],
+    }));
+
+    this.server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+      if (isKnowledgePrompt(request.params.name)) {
+        return getKnowledgePrompt(
+          request.params.name,
+          request.params.arguments,
+          this.knowledgeCatalogReader,
+        );
+      }
+      return getProjectBuilderPrompt(request.params.name, request.params.arguments);
+    });
+  }
+
+  /** Connect to a caller-owned MCP transport (useful for embedding and compatibility tests). */
+  async connect(transport: Transport): Promise<void> {
+    await this.server.connect(transport);
   }
 
   /**
@@ -240,8 +361,8 @@ export class MCPDebugServer {
    */
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
-    await this.server.connect(transport);
-    console.error(`${ARCH_MCP_LOG_PREFIX} Server started`);
+    await this.connect(transport);
+    writeMcpLog('info', 'Server started');
   }
 
   /**
@@ -250,69 +371,27 @@ export class MCPDebugServer {
   async stop(): Promise<void> {
     this.wsClient.disconnect();
     await this.server.close();
-    console.error(`${ARCH_MCP_LOG_PREFIX} Server stopped`);
+    writeMcpLog('info', 'Server stopped');
   }
 }
 
-export function formatUnknownToolError(name: string): Record<string, unknown> {
-  return {
-    success: false,
-    errorCode: "UNKNOWN_TOOL",
-    error: `Unknown tool: ${name}`,
-    toolName: name,
-    availableTools: tools.map((tool) => tool.name).sort(),
-    hint: "Use tools/list and call one of the advertised tool names exactly.",
-  };
-}
-
-export function formatToolCallError(
-  toolName: string,
-  error: unknown,
-): Record<string, unknown> {
-  if (error instanceof z.ZodError) {
-    return {
-      success: false,
-      errorCode: "TOOL_ARGUMENT_VALIDATION_FAILED",
-      error: `Invalid arguments for ${toolName}`,
-      toolName,
-      issues: error.issues.map(formatZodIssue),
-      hint: "Inspect this tool inputSchema from tools/list and retry with values matching the listed field paths.",
-    };
+function safeSanitizeDiagnostic(value: unknown): unknown {
+  try {
+    return sanitizeResponseBounded(value);
+  } catch {
+    return '[REDACTED]';
   }
-
-  const message = error instanceof Error ? error.message : String(error);
-  const errorName = error instanceof Error ? error.name : undefined;
-  const errorCode = (error as { code?: string })?.code;
-  const errorCause = error instanceof Error ? error.cause : undefined;
-
-  return {
-    success: false,
-    errorCode:
-      typeof errorCode === "string" ? errorCode : "TOOL_EXECUTION_FAILED",
-    error: message || "Unknown error",
-    toolName,
-    ...(errorName && errorName !== "Error" ? { errorName } : {}),
-    ...(errorCause instanceof Error
-      ? { cause: errorCause.message }
-      : errorCause !== undefined
-        ? { cause: errorCause }
-        : {}),
-  };
 }
 
-function formatZodIssue(issue: z.ZodIssue): Record<string, unknown> {
-  const detail: Record<string, unknown> = {
-    path: issue.path.length > 0 ? issue.path.join(".") : "(root)",
-    code: issue.code,
-    message: issue.message,
-  };
-
-  if ("expected" in issue) detail.expected = issue.expected;
-  if ("received" in issue) detail.received = issue.received;
-  if ("options" in issue) detail.options = issue.options;
-  if ("minimum" in issue) detail.minimum = issue.minimum;
-  if ("maximum" in issue) detail.maximum = issue.maximum;
-  if ("inclusive" in issue) detail.inclusive = issue.inclusive;
-
-  return detail;
+function writeMcpLog(
+  level: 'info' | 'error',
+  message: string,
+  diagnostics?: Record<string, unknown>,
+): void {
+  const payload = safeSanitizeDiagnostic({
+    level,
+    message,
+    ...(diagnostics ? { diagnostics } : {}),
+  });
+  process.stderr.write(`${ARCH_MCP_LOG_PREFIX} ${JSON.stringify(payload)}\n`);
 }

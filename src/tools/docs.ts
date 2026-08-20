@@ -115,8 +115,20 @@ interface RemoteSearchResult {
   results?: Array<{ id: string; title: string; excerpt: string }>;
 }
 
-async function apiFetch<T>(url: string, headers: Record<string, string>): Promise<T> {
-  const res = await fetchWithTimeout(url, { headers }, FETCH_TIMEOUT_MS);
+export interface DocsDependencies {
+  fetchWithTimeout: typeof fetchWithTimeout;
+}
+
+const defaultDocsDependencies: DocsDependencies = {
+  fetchWithTimeout,
+};
+
+async function apiFetch<T>(
+  url: string,
+  headers: Record<string, string>,
+  dependencies: DocsDependencies,
+): Promise<T> {
+  const res = await dependencies.fetchWithTimeout(url, { headers }, FETCH_TIMEOUT_MS);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}${body ? `: ${body}` : ''}`);
@@ -138,13 +150,17 @@ export const docsSchema = z.object({
   query: z.string().optional().describe('Search term to find across all documentation topics'),
 });
 
-type DocsArgs = z.infer<typeof docsSchema>;
+export type DocsArgs = z.infer<typeof docsSchema>;
 
 // =============================================================================
 // HANDLER
 // =============================================================================
 
-export async function docs(args: DocsArgs, ctx: DebugContext): Promise<string> {
+export async function docs(
+  args: DocsArgs,
+  ctx: DebugContext,
+  dependencies: DocsDependencies = defaultDocsDependencies,
+): Promise<string> {
   const { topic, query } = args;
 
   const baseUrl = ctx.httpClient.getBaseUrl();
@@ -185,7 +201,11 @@ export async function docs(args: DocsArgs, ctx: DebugContext): Promise<string> {
   // ── LIST TOPICS ──────────────────────────────────────────────────────────
   if (!topic && !query) {
     try {
-      const data = await apiFetch<RemoteIndexResult>(`${studioBase}/api/abl/docs`, headers);
+      const data = await apiFetch<RemoteIndexResult>(
+        `${studioBase}/api/abl/docs`,
+        headers,
+        dependencies,
+      );
       if (data.success && data.topics) {
         return JSON.stringify(
           {
@@ -213,6 +233,7 @@ export async function docs(args: DocsArgs, ctx: DebugContext): Promise<string> {
       const data = await apiFetch<RemoteTopicResult>(
         `${studioBase}/api/abl/docs?topic=${safeTopic}`,
         headers,
+        dependencies,
       );
       if (data.success && data.topic) {
         return JSON.stringify(
@@ -250,6 +271,7 @@ export async function docs(args: DocsArgs, ctx: DebugContext): Promise<string> {
       const data = await apiFetch<RemoteSearchResult>(
         `${studioBase}/api/abl/docs?search=${safeQuery}`,
         headers,
+        dependencies,
       );
       if (data.success && data.results) {
         const embeddedResults = searchDocumentation(query);

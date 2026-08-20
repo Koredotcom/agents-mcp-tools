@@ -20,7 +20,12 @@ import { fetchWithTimeout } from '../utils/fetch.js';
 import { validatePathParam } from '../utils/validate.js';
 import { sanitizeResponse } from '../utils/sanitize.js';
 import { loadPackageFiles, readPackageFilesFromData } from '../utils/package-files.js';
-import { buildStudioHeaders, deriveStudioUrl, readResponseBody } from '../utils/studio-api.js';
+import {
+  buildStudioHeaders,
+  deriveStudioUrl,
+  readResponseBody,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 
 // =============================================================================
 // SCHEMA
@@ -56,9 +61,17 @@ export const platformImportExportSchema = z.object({
     .describe(
       'When true, import/apply runs preview first and acknowledges all non-blocking issues if there are no blocking issues. Defaults to true when confirm is true and no acknowledgement fields were supplied.',
     ),
+  includeVersionHistory: z
+    .boolean()
+    .optional()
+    .describe('When true, include agent version history in the export.'),
 });
 
 type PlatformImportExportArgs = z.infer<typeof platformImportExportSchema>;
+
+const defaultPlatformImportExportDependencies: StudioApiDependencies = {
+  fetchWithTimeout,
+};
 
 // =============================================================================
 // HELPERS
@@ -206,6 +219,7 @@ async function addAutomaticAcknowledgements(input: {
   safeProjectId: string;
   payload: Record<string, unknown>;
   args: PlatformImportExportArgs;
+  dependencies: StudioApiDependencies;
 }): Promise<
   | { ok: true; payload: Record<string, unknown>; autoAcknowledgement?: Record<string, unknown> }
   | { ok: false; response: string }
@@ -238,7 +252,7 @@ async function addAutomaticAcknowledgements(input: {
 
   const previewPayload = withoutAcknowledgementArgs(input.payload);
   const endpointPath = `/api/projects/${input.safeProjectId}/import/preview`;
-  const response = await fetchWithTimeout(
+  const response = await input.dependencies.fetchWithTimeout(
     `${input.basePath}/import/preview`,
     {
       method: 'POST',
@@ -371,9 +385,10 @@ async function patchProjectEntryAgent(
   headers: Record<string, string>,
   projectId: string,
   entryAgentName: string,
+  dependencies: StudioApiDependencies,
 ): Promise<void> {
   const url = `${studioBase}/api/projects/${projectId}`;
-  const response = await fetchWithTimeout(
+  const response = await dependencies.fetchWithTimeout(
     url,
     {
       method: 'PATCH',
@@ -398,11 +413,12 @@ async function patchProjectEntryAgent(
 export async function platformImportExport(
   args: PlatformImportExportArgs,
   ctx: DebugContext,
+  dependencies: StudioApiDependencies = defaultPlatformImportExportDependencies,
 ): Promise<string> {
   const { action, projectId, data, confirm } = args;
   const safeProjectId = validatePathParam(projectId, 'projectId');
   const studioBase = deriveStudioUrl(ctx.httpClient.getBaseUrl());
-  const headers = buildStudioHeaders(ctx);
+  const headers = buildStudioHeaders(ctx, studioBase);
   const basePath = `${studioBase}/api/projects/${safeProjectId}`;
 
   try {
@@ -410,7 +426,7 @@ export async function platformImportExport(
       // ----- EXPORT PREVIEW -----
       case 'export_preview': {
         const endpointPath = `/api/projects/${safeProjectId}/export/preview`;
-        const response = await fetchWithTimeout(
+        const response = await dependencies.fetchWithTimeout(
           `${basePath}/export/preview`,
           { method: 'POST', headers },
           15_000,
@@ -424,8 +440,13 @@ export async function platformImportExport(
 
       // ----- EXPORT -----
       case 'export': {
-        const endpointPath = `/api/projects/${safeProjectId}/export`;
-        const response = await fetchWithTimeout(`${basePath}/export`, { headers }, 30_000);
+        const exportQuery = args.includeVersionHistory ? '?include_version_history=true' : '';
+        const endpointPath = `/api/projects/${safeProjectId}/export${exportQuery}`;
+        const response = await dependencies.fetchWithTimeout(
+          `${basePath}/export${exportQuery}`,
+          { headers },
+          30_000,
+        );
         if (!response.ok) {
           return requestFailed(response, 'GET', endpointPath);
         }
@@ -440,7 +461,7 @@ export async function platformImportExport(
         }
         const { payload, warnings, source } = await buildImportPayload(args);
         const endpointPath = `/api/projects/${safeProjectId}/import/preview`;
-        const response = await fetchWithTimeout(
+        const response = await dependencies.fetchWithTimeout(
           `${basePath}/import/preview`,
           {
             method: 'POST',
@@ -479,12 +500,13 @@ export async function platformImportExport(
           safeProjectId,
           payload,
           args,
+          dependencies,
         });
         if (!acknowledgement.ok) {
           return acknowledgement.response;
         }
         const endpointPath = `/api/projects/${safeProjectId}/import/apply`;
-        const response = await fetchWithTimeout(
+        const response = await dependencies.fetchWithTimeout(
           `${basePath}/import/apply`,
           {
             method: 'POST',
@@ -502,7 +524,13 @@ export async function platformImportExport(
         const entryAgent = extractEntryAgent(acknowledgement.payload);
         if (entryAgent) {
           try {
-            await patchProjectEntryAgent(studioBase, headers, safeProjectId, entryAgent);
+            await patchProjectEntryAgent(
+              studioBase,
+              headers,
+              safeProjectId,
+              entryAgent,
+              dependencies,
+            );
           } catch (patchErr) {
             // Non-fatal: include a warning in the response
             const patchMessage = patchErr instanceof Error ? patchErr.message : String(patchErr);

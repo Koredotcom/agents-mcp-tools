@@ -1,13 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { platformValidatePackage } from '../tools/platform-validate-package.js';
 import type { DebugContext } from '../tools/index.js';
-import { fetchWithTimeout } from '../utils/fetch.js';
+import type { StudioApiDependencies } from '../utils/studio-api.js';
 
-vi.mock('../utils/fetch.js', () => ({
-  fetchWithTimeout: vi.fn(),
-}));
+interface FetchCall {
+  url: string;
+  options: RequestInit;
+  timeoutMs: number;
+}
 
-const fetchMock = vi.mocked(fetchWithTimeout);
+interface FetchRecorder {
+  calls: FetchCall[];
+  dependencies: StudioApiDependencies;
+}
 
 const ctx = {
   httpClient: {
@@ -16,42 +21,35 @@ const ctx = {
   },
 } as unknown as DebugContext;
 
-beforeEach(() => {
-  fetchMock.mockReset();
-});
-
 describe('platformValidatePackage', () => {
   it('accepts import-style data.files payloads for validator/import-preview parity', async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          diagnostics: {
-            valid: true,
-            issues: [],
-            constraintObservability: {
-              rawConstraints: 1,
-              parsedConstraints: 1,
-              compiledRuntimeConstraints: 1,
-            },
-            structuralSummary: {
-              totals: {
-                agents: 1,
-                rawVsCompiledMismatches: 0,
-              },
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({
+        diagnostics: {
+          valid: true,
+          issues: [],
+          constraintObservability: {
+            rawConstraints: 1,
+            parsedConstraints: 1,
+            compiledRuntimeConstraints: 1,
+          },
+          structuralSummary: {
+            totals: {
+              agents: 1,
+              rawVsCompiledMismatches: 0,
             },
           },
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          preview: {
-            hasBlockingIssues: false,
-            nonBlockingIssueCount: 0,
-            issues: [],
-          },
-        }),
-      );
+        },
+      }),
+      jsonResponse({
+        success: true,
+        preview: {
+          hasBlockingIssues: false,
+          nonBlockingIssueCount: 0,
+          issues: [],
+        },
+      }),
+    );
 
     const result = JSON.parse(
       await platformValidatePackage(
@@ -65,6 +63,7 @@ describe('platformValidatePackage', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       success: boolean;
@@ -90,36 +89,94 @@ describe('platformValidatePackage', () => {
       totals: { agents: 1, rawVsCompiledMismatches: 0 },
     });
 
-    const validateBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as {
-      files: Record<string, string>;
-    };
-    const previewBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string) as {
+    const validateBody = readCallBody<{ files: Record<string, string> }>(fetchRecorder, 0);
+    const previewBody = readCallBody<{
       deleteUnmatched: boolean;
       files: Record<string, string>;
-    };
-    expect(validateBody.files).toEqual({
-      'project.json': '{"format_version":"2.0"}',
-    });
+    }>(fetchRecorder, 1);
+
+    expect(fetchRecorder.calls).toEqual([
+      {
+        url: 'http://localhost:5173/api/abl/package/validate',
+        options: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'http://localhost:5173',
+            Authorization: 'Bearer token-123',
+          },
+          body: JSON.stringify({ files: { 'project.json': '{"format_version":"2.0"}' } }),
+        },
+        timeoutMs: 30_000,
+      },
+      {
+        url: 'http://localhost:5173/api/projects/proj_123/import/preview',
+        options: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Origin: 'http://localhost:5173',
+            Authorization: 'Bearer token-123',
+          },
+          body: JSON.stringify({
+            deleteUnmatched: false,
+            files: { 'project.json': '{"format_version":"2.0"}' },
+          }),
+        },
+        timeoutMs: 30_000,
+      },
+    ]);
+    expect(validateBody.files).toEqual({ 'project.json': '{"format_version":"2.0"}' });
     expect(previewBody).toMatchObject({
       deleteUnmatched: false,
       files: { 'project.json': '{"format_version":"2.0"}' },
     });
   });
 
-  it('returns apply-ready acknowledgement args when preview issues are fully identifiable', async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ valid: true, issues: [] }))
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
+  it.each([
+    {
+      name: 'apply-ready acknowledgement args when preview issues are fully identifiable',
+      previewBody: {
+        success: true,
+        previewDigest: 'digest-1',
+        preview: {
+          hasBlockingIssues: false,
+          nonBlockingIssueCount: 1,
+          issues: [{ id: 'warning-1', blocking: false, severity: 'warning' }],
+        },
+      },
+      expected: {
+        canApply: true,
+        acknowledgementReady: true,
+        missingAcknowledgementIssueIdCount: 0,
+        suggestedApplyArgs: {
           previewDigest: 'digest-1',
-          preview: {
-            hasBlockingIssues: false,
-            nonBlockingIssueCount: 1,
-            issues: [{ id: 'warning-1', blocking: false, severity: 'warning' }],
-          },
-        }),
-      );
+          acknowledgedIssueIds: ['warning-1'],
+        },
+      },
+    },
+    {
+      name: 'incomplete acknowledgement when issue IDs or digest are missing',
+      previewBody: {
+        success: true,
+        preview: {
+          hasBlockingIssues: false,
+          nonBlockingIssueCount: 1,
+          issues: [{ blocking: false, severity: 'warning' }],
+        },
+      },
+      expected: {
+        canApply: false,
+        acknowledgementReady: false,
+        missingAcknowledgementIssueIdCount: 1,
+        suggestedApplyArgs: undefined,
+      },
+    },
+  ])('$name', async ({ previewBody, expected }) => {
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({ valid: true, issues: [] }),
+      jsonResponse(previewBody),
+    );
 
     const result = JSON.parse(
       await platformValidatePackage(
@@ -130,71 +187,83 @@ describe('platformValidatePackage', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       success: boolean;
       importPreview: {
         canApply: boolean;
         acknowledgementReady: boolean;
-        suggestedApplyArgs: {
-          previewDigest: string;
-          acknowledgedIssueIds: string[];
-        };
+        missingAcknowledgementIssueIdCount: number;
+        suggestedApplyArgs?: { previewDigest: string; acknowledgedIssueIds: string[] };
       };
     };
 
     expect(result.success).toBe(true);
     expect(result.importPreview).toMatchObject({
-      canApply: true,
-      acknowledgementReady: true,
-      suggestedApplyArgs: {
-        previewDigest: 'digest-1',
-        acknowledgedIssueIds: ['warning-1'],
-      },
+      canApply: expected.canApply,
+      acknowledgementReady: expected.acknowledgementReady,
+      missingAcknowledgementIssueIdCount: expected.missingAcknowledgementIssueIdCount,
     });
+    expect(result.importPreview.suggestedApplyArgs).toEqual(expected.suggestedApplyArgs);
+    expect(fetchRecorder.calls.map((call) => call.timeoutMs)).toEqual([30_000, 30_000]);
   });
 
-  it('marks preview acknowledgement incomplete when issue IDs or digest are missing', async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ valid: true, issues: [] }))
-      .mockResolvedValueOnce(
-        jsonResponse({
-          success: true,
-          preview: {
-            hasBlockingIssues: false,
-            nonBlockingIssueCount: 1,
-            issues: [{ blocking: false, severity: 'warning' }],
-          },
-        }),
-      );
+  it('returns validator failures without requesting import preview', async () => {
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({ error: 'Invalid package' }, { status: 400, statusText: 'Bad Request' }),
+    );
 
     const result = JSON.parse(
       await platformValidatePackage(
         {
           projectId: 'proj_123',
-          files: {
-            'project.json': '{"format_version":"2.0"}',
+          data: {
+            deleteUnmatched: false,
+            files: {
+              'project.json': '{"format_version":"2.0"}',
+            },
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
-      importPreview: {
-        canApply: boolean;
-        acknowledgementReady: boolean;
-        missingAcknowledgementIssueIdCount: number;
-        suggestedApplyArgs?: unknown;
-      };
+      success: boolean;
+      error: string;
+      status: number;
     };
 
-    expect(result.importPreview).toMatchObject({
-      canApply: false,
-      acknowledgementReady: false,
-      missingAcknowledgementIssueIdCount: 1,
+    expect(result).toMatchObject({
+      success: false,
+      status: 400,
     });
-    expect(result.importPreview.suggestedApplyArgs).toBeUndefined();
+    expect(result.error).toContain('/api/abl/package/validate failed');
+    expect(fetchRecorder.calls).toHaveLength(1);
   });
 });
+
+function createFetchRecorder(...responses: Response[]): FetchRecorder {
+  const calls: FetchCall[] = [];
+  const queue = [...responses];
+  const fetchWithTimeout: StudioApiDependencies['fetchWithTimeout'] = async (
+    url,
+    options = {},
+    timeoutMs = 5000,
+  ) => {
+    calls.push({ url, options, timeoutMs });
+    return queue.shift() ?? jsonResponse({});
+  };
+
+  return {
+    calls,
+    dependencies: { fetchWithTimeout },
+  };
+}
+
+function readCallBody<T>(fetchRecorder: FetchRecorder, index: number): T {
+  return JSON.parse(fetchRecorder.calls[index]?.options.body as string) as T;
+}
 
 function jsonResponse(
   body: unknown,

@@ -61,7 +61,7 @@ export async function platformProjects(
 ): Promise<string> {
   const { action, projectId, name, description, entryAgentName, confirm } = args;
   const studioBase = deriveStudioUrl(ctx.httpClient.getBaseUrl());
-  const headers = buildStudioHeaders(ctx);
+  const headers = buildStudioHeaders(ctx, studioBase);
   const basePath = `${studioBase}/api/projects`;
 
   try {

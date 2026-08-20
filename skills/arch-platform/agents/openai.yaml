@@ -1,0 +1,4 @@
+interface:
+  display_name: Arch Platform
+  short_description: Operate Agent Platform safely with Arch MCP knowledge
+  default_prompt: Plan this Agent Platform task from Arch's code-backed operations and dependencies, then verify every mutation.

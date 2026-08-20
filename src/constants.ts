@@ -8,7 +8,7 @@
  *   AGENTS_URL=https://agents.kore.ai        (production)
  *   AGENTS_URL=https://agents-dev.kore.ai     (dev)
  *   AGENTS_URL=https://agents-staging.kore.ai (staging)
- *   AGENTS_URL=http://localhost:3112           (local)
+ *   AGENTS_URL=https://agents-qa.kore.ai       (qa)
  */
 
 import { deriveUrls } from './utils/url.js';

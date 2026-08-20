@@ -14,7 +14,11 @@ import {
   extractPackageConstraintObservability,
   extractPackageStructuralSummary,
 } from '../utils/package-contract.js';
-import { formatStudioFailure, postStudioJson } from '../utils/studio-api.js';
+import {
+  formatStudioFailure,
+  postStudioJson,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 import { validatePathParam } from '../utils/validate.js';
 
 export const platformValidatePackageSchema = z.object({
@@ -39,6 +43,7 @@ type PlatformValidatePackageArgs = z.infer<typeof platformValidatePackageSchema>
 export async function platformValidatePackage(
   args: PlatformValidatePackageArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const loaded = await loadPackageFiles({
@@ -46,9 +51,13 @@ export async function platformValidatePackage(
       files: args.files ?? readPackageFilesFromData(args.data),
     });
     const endpointPath = '/api/abl/package/validate';
-    const result = await postStudioJson(ctx, endpointPath, {
-      files: loaded.files,
-    });
+    const result = await postStudioJson(
+      ctx,
+      endpointPath,
+      { files: loaded.files },
+      30_000,
+      dependencies,
+    );
 
     if (!result.ok) {
       return formatStudioFailure(endpointPath, result);
@@ -56,10 +65,15 @@ export async function platformValidatePackage(
 
     const importPreview =
       args.projectId && args.projectId.length > 0
-        ? await loadImportPreview(ctx, args.projectId, {
-            ...(args.data ?? {}),
-            files: loaded.files,
-          })
+        ? await loadImportPreview(
+            ctx,
+            args.projectId,
+            {
+              ...(args.data ?? {}),
+              files: loaded.files,
+            },
+            dependencies,
+          )
         : null;
 
     return JSON.stringify(
@@ -93,9 +107,10 @@ async function loadImportPreview(
   ctx: DebugContext,
   projectId: string,
   payload: Record<string, unknown>,
+  dependencies?: StudioApiDependencies,
 ): Promise<unknown> {
   const endpointPath = `/api/projects/${validatePathParam(projectId, 'projectId')}/import/preview`;
-  const result = await postStudioJson(ctx, endpointPath, payload);
+  const result = await postStudioJson(ctx, endpointPath, payload, 30_000, dependencies);
   if (!result.ok) {
     return JSON.parse(formatStudioFailure(endpointPath, result)) as unknown;
   }

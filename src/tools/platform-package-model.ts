@@ -12,7 +12,11 @@ import {
   extractPackageConstraintObservability,
   extractPackageStructuralSummary,
 } from '../utils/package-contract.js';
-import { formatStudioFailure, postStudioJson } from '../utils/studio-api.js';
+import {
+  formatStudioFailure,
+  postStudioJson,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 
 export const platformPackageModelSchema = z.object({
   path: z.string().optional().describe('Local project folder or .zip path to inspect'),
@@ -28,6 +32,7 @@ type PlatformPackageModelArgs = z.infer<typeof platformPackageModelSchema>;
 export async function platformPackageModel(
   args: PlatformPackageModelArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const loaded = await loadPackageFiles({
@@ -35,9 +40,13 @@ export async function platformPackageModel(
       files: args.files ?? readPackageFilesFromData(args.data),
     });
     const endpointPath = '/api/abl/package/model';
-    const result = await postStudioJson(ctx, endpointPath, {
-      files: loaded.files,
-    });
+    const result = await postStudioJson(
+      ctx,
+      endpointPath,
+      { files: loaded.files },
+      30_000,
+      dependencies,
+    );
 
     if (!result.ok) {
       return formatStudioFailure(endpointPath, result);

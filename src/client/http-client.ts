@@ -7,6 +7,27 @@
 import type { AgentsResponse, AgentDetails } from '../types.js';
 import { DEFAULT_HTTP_URL } from '../constants.js';
 import { fetchWithTimeout, FetchError, type FetchErrorCode } from '../utils/fetch.js';
+import { classifyFetchError } from '../utils/fetch.js';
+import { readBoundedResponseJson, ResponseSizeLimitError } from '../utils/bounded-response.js';
+import { sanitizeResponseBounded } from '../utils/sanitize.js';
+
+async function describeErrorResponse(response: Response): Promise<string> {
+  try {
+    const text = await response.text();
+    if (!text) return '';
+
+    let body: unknown = text;
+    try {
+      body = JSON.parse(text);
+    } catch {
+      // Preserve non-JSON error details after text sanitization.
+    }
+
+    return `: ${JSON.stringify(sanitizeResponseBounded(body))}`;
+  } catch {
+    return '';
+  }
+}
 
 export interface HealthCheckResult {
   reachable: boolean;
@@ -14,6 +35,31 @@ export interface HealthCheckResult {
   details?: Record<string, unknown>;
   error?: string;
   errorCode?: FetchErrorCode;
+}
+
+export interface BoundedHttpOptions {
+  readonly timeoutMs: number;
+  readonly maxResponseBytes: number;
+}
+
+export interface BoundedHttpResult {
+  readonly status: number;
+  readonly statusText: string;
+  readonly body: unknown;
+}
+
+export class HttpResponseDecodeError extends Error {
+  readonly code = 'MALFORMED_RESPONSE';
+  readonly status: number;
+  readonly statusText: string;
+
+  constructor(status: number, statusText: string, cause?: unknown) {
+    super('Runtime returned malformed JSON.');
+    this.name = 'HttpResponseDecodeError';
+    this.status = status;
+    this.statusText = statusText;
+    if (cause !== undefined) this.cause = cause;
+  }
 }
 
 export class HttpClient {
@@ -27,7 +73,7 @@ export class HttpClient {
   /**
    * Set auth token for authenticated requests
    */
-  setAuthToken(token: string): void {
+  setAuthToken(token: string | null): void {
     this.authToken = token;
   }
 
@@ -82,12 +128,12 @@ export class HttpClient {
   }
 
   /**
-   * Runtime health check — hits GET /health with a 5s timeout.
+   * Runtime health check — hits GET /health/live with a 5s timeout.
    * Returns structured result with reachability, status, and details.
    */
-  async runtimeHealthCheck(): Promise<HealthCheckResult> {
+  async runtimeHealthCheck(baseUrl = this.baseUrl): Promise<HealthCheckResult> {
     try {
-      const response = await fetchWithTimeout(`${this.baseUrl}/health`);
+      const response = await fetchWithTimeout(`${baseUrl}/health/live`);
 
       if (response.ok) {
         try {
@@ -138,6 +184,43 @@ export class HttpClient {
   }
 
   /**
+   * Focused authenticated GET with one deadline across headers and body.
+   * Returns bounded decoded JSON for every HTTP status; transport/decoding
+   * failures remain typed so callers can preserve safe diagnostics.
+   */
+  async getBoundedJson(path: string, options: BoundedHttpOptions): Promise<BoundedHttpResult> {
+    const baseUrl = this.baseUrl;
+    const authToken = this.authToken;
+    const url = `${baseUrl}${path}`;
+    const headers: Record<string, string> = authToken
+      ? { Authorization: `Bearer ${authToken}` }
+      : {};
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs);
+
+    try {
+      const response = await fetch(url, { headers, signal: controller.signal });
+      try {
+        const body = await readBoundedResponseJson(response, options.maxResponseBytes);
+        return { status: response.status, statusText: response.statusText, body };
+      } catch (error) {
+        if (error instanceof ResponseSizeLimitError) throw error;
+        if (error instanceof SyntaxError) {
+          throw new HttpResponseDecodeError(response.status, response.statusText, error);
+        }
+        throw error;
+      }
+    } catch (error) {
+      if (error instanceof ResponseSizeLimitError || error instanceof HttpResponseDecodeError) {
+        throw error;
+      }
+      throw classifyFetchError(error, url);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /**
    * Generic authenticated POST request.
    * Returns the parsed JSON body or throws on non-2xx responses.
    */
@@ -149,7 +232,8 @@ export class HttpClient {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (!response.ok) {
-      throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}`);
+      const details = await describeErrorResponse(response);
+      throw new Error(`POST ${path} failed: ${response.status} ${response.statusText}${details}`);
     }
     return response.json() as Promise<T>;
   }

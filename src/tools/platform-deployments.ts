@@ -1,157 +1,168 @@
-/**
- * platform_deployments Tool
- *
- * Manage deployments within a project via the Runtime REST API.
- * Supports list, create, get, retire, and rollback actions.
- */
+/** Manage deployments through the current typed Runtime lifecycle contracts. */
 
 import { z } from 'zod';
 import type { DebugContext } from './index.js';
 import { validatePathParam } from '../utils/validate.js';
 import { sanitizeResponse } from '../utils/sanitize.js';
 
-// =============================================================================
-// SCHEMA
-// =============================================================================
+export const platformManifestEntrySchema = z
+  .object({
+    version: z.string().min(1),
+    configVarsVersion: z.string().min(1).optional(),
+    configVarsVersionLabel: z.string().min(1).optional(),
+    settingsVersion: z.string().min(1).optional(),
+  })
+  .strict();
+
+const environmentSchema = z.enum(['dev', 'staging', 'production']);
 
 export const platformDeploymentsSchema = z.object({
-  action: z.enum(['list', 'create', 'get', 'retire', 'rollback']),
+  action: z.enum(['list', 'create', 'get', 'promote', 'retire', 'rollback', 'restore']),
   projectId: z.string().describe('Project ID'),
-  deploymentId: z.string().optional().describe('Deployment ID (for get, retire, rollback)'),
-  label: z.string().optional().describe('Deployment label (for create)'),
-  environment: z
-    .string()
-    .optional()
-    .describe('Environment (for create: development, staging, production)'),
-  entryAgentName: z.string().optional().describe('Name of the entry agent (required for create)'),
+  deploymentId: z.string().optional().describe('Deployment ID'),
+  label: z.string().optional().describe('Deployment label'),
+  description: z.string().optional().describe('Deployment description'),
+  environment: environmentSchema.optional().describe('Environment for create'),
+  targetEnvironment: environmentSchema.optional().describe('Target environment for promote'),
+  entryAgentName: z.string().optional().describe('Entry agent (empty for workflow-only)'),
   agentVersionManifest: z
-    .record(z.string())
+    .record(platformManifestEntrySchema)
     .optional()
-    .describe('Map of agentName to version string (for create)'),
-  confirm: z
-    .boolean()
+    .describe('Typed map of agent names to immutable versions'),
+  workflowVersionManifest: z
+    .record(platformManifestEntrySchema)
     .optional()
-    .describe('Set to true to confirm destructive operations (retire)'),
+    .describe('Typed map of workflow names to immutable versions'),
+  modelOverrides: z.record(z.record(z.unknown())).optional(),
+  settingsVersionId: z.string().min(1).optional(),
+  deploymentConfigVarsVersion: z.string().min(1).optional(),
+  force: z.boolean().optional().describe('Create without preflight or retire immediately'),
+  bypassQualificationGate: z.boolean().optional(),
+  bypassReason: z.string().trim().min(1).optional(),
+  confirm: z.boolean().optional().describe('Required for rollback, restore, and retire'),
 });
 
-type PlatformDeploymentsArgs = z.infer<typeof platformDeploymentsSchema>;
+export type PlatformDeploymentsArgs = z.infer<typeof platformDeploymentsSchema>;
 
-// =============================================================================
-// HANDLER
-// =============================================================================
+function result(success: boolean, value: Record<string, unknown>): string {
+  return JSON.stringify({ success, ...value }, null, 2);
+}
+
+function requireDeploymentId(value: string | undefined, action: string): string | null {
+  return value
+    ? null
+    : result(false, { error: `deploymentId is required for the ${action} action.` });
+}
+
+function bypassBody(args: PlatformDeploymentsArgs): Record<string, unknown> {
+  return args.bypassQualificationGate
+    ? { bypassQualificationGate: true, bypassReason: args.bypassReason }
+    : {};
+}
+
+function validateBypass(args: PlatformDeploymentsArgs): string | null {
+  return args.bypassQualificationGate && !args.bypassReason?.trim()
+    ? result(false, {
+        code: 'CONFIRMATION_REQUIRED',
+        error: 'Qualification bypass requires bypassQualificationGate=true and bypassReason.',
+      })
+    : null;
+}
 
 export async function platformDeployments(
   args: PlatformDeploymentsArgs,
   ctx: DebugContext,
 ): Promise<string> {
-  const {
-    action,
-    projectId,
-    deploymentId,
-    label,
-    environment,
-    entryAgentName,
-    agentVersionManifest,
-    confirm,
-  } = args;
+  const { action, projectId } = args;
   const safeProjectId = validatePathParam(projectId, 'projectId');
   const basePath = `/api/projects/${safeProjectId}/deployments`;
 
   try {
-    switch (action) {
-      case 'list': {
-        const result = await ctx.httpClient.get(basePath);
-        return JSON.stringify({ success: true, data: sanitizeResponse(result) }, null, 2);
-      }
-
-      case 'create': {
-        if (!environment) {
-          return JSON.stringify({
-            success: false,
-            error: 'environment is required for the create action.',
-          });
-        }
-        if (!entryAgentName) {
-          return JSON.stringify({
-            success: false,
-            error: 'entryAgentName is required for the create action.',
-          });
-        }
-        if (!agentVersionManifest) {
-          return JSON.stringify({
-            success: false,
-            error: 'agentVersionManifest is required for the create action.',
-          });
-        }
-        const body: Record<string, unknown> = {
-          environment,
-          entryAgentName,
-          agentVersionManifest,
-        };
-        if (label) body.label = label;
-        const result = await ctx.httpClient.post(basePath, body);
-        return JSON.stringify({ success: true, data: sanitizeResponse(result) }, null, 2);
-      }
-
-      case 'get': {
-        if (!deploymentId) {
-          return JSON.stringify({
-            success: false,
-            error: 'deploymentId is required for the get action.',
-          });
-        }
-        const safeDeploymentId = validatePathParam(deploymentId, 'deploymentId');
-        const result = await ctx.httpClient.get(`${basePath}/${safeDeploymentId}`);
-        return JSON.stringify({ success: true, data: sanitizeResponse(result) }, null, 2);
-      }
-
-      case 'retire': {
-        if (!deploymentId) {
-          return JSON.stringify({
-            success: false,
-            error: 'deploymentId is required for the retire action.',
-          });
-        }
-        if (confirm !== true) {
-          return JSON.stringify({
-            success: false,
-            needsConfirmation: true,
-            message:
-              'This will retire the deployment and take it offline. Set confirm: true to proceed.',
-          });
-        }
-        const safeDeploymentId = validatePathParam(deploymentId, 'deploymentId');
-        const result = await ctx.httpClient.post(`${basePath}/${safeDeploymentId}/retire`);
-        return JSON.stringify({ success: true, data: sanitizeResponse(result) }, null, 2);
-      }
-
-      case 'rollback': {
-        if (!deploymentId) {
-          return JSON.stringify({
-            success: false,
-            error: 'deploymentId is required for the rollback action.',
-          });
-        }
-        if (confirm !== true) {
-          return JSON.stringify({
-            success: false,
-            needsConfirmation: true,
-            message:
-              'This will rollback the deployment to a previous version. Set confirm: true to proceed.',
-          });
-        }
-        const safeDeploymentId = validatePathParam(deploymentId, 'deploymentId');
-        const result = await ctx.httpClient.post(`${basePath}/${safeDeploymentId}/rollback`);
-        return JSON.stringify({ success: true, data: sanitizeResponse(result) }, null, 2);
-      }
-
-      default:
-        return JSON.stringify({ success: false, error: `Unknown action: ${action}` });
+    if (action === 'list') {
+      const data = await ctx.httpClient.get(basePath);
+      return result(true, { data: sanitizeResponse(data) });
     }
+    if (action === 'create') {
+      if (!args.environment) return result(false, { error: 'environment is required for create.' });
+      if (args.entryAgentName === undefined) {
+        return result(false, { error: 'entryAgentName is required for create.' });
+      }
+      if (!args.agentVersionManifest) {
+        return result(false, { error: 'agentVersionManifest is required for create.' });
+      }
+      if (
+        Object.keys(args.agentVersionManifest).length === 0 &&
+        Object.keys(args.workflowVersionManifest ?? {}).length === 0
+      ) {
+        return result(false, {
+          error: 'At least one typed manifest entry is required for create.',
+        });
+      }
+      const bypassError = validateBypass(args);
+      if (bypassError) return bypassError;
+      const data = await ctx.httpClient.post(basePath, {
+        environment: args.environment,
+        entryAgentName: args.entryAgentName,
+        agentVersionManifest: args.agentVersionManifest,
+        ...(args.workflowVersionManifest
+          ? { workflowVersionManifest: args.workflowVersionManifest }
+          : {}),
+        ...(args.label ? { label: args.label } : {}),
+        ...(args.description ? { description: args.description } : {}),
+        ...(args.modelOverrides ? { modelOverrides: args.modelOverrides } : {}),
+        ...(args.settingsVersionId ? { settingsVersionId: args.settingsVersionId } : {}),
+        ...(args.deploymentConfigVarsVersion
+          ? { deploymentConfigVarsVersion: args.deploymentConfigVarsVersion }
+          : {}),
+        ...(args.force ? { force: true } : {}),
+        ...bypassBody(args),
+      });
+      return result(true, { data: sanitizeResponse(data) });
+    }
+
+    const missingId = requireDeploymentId(args.deploymentId, action);
+    if (missingId) return missingId;
+    const deploymentId = validatePathParam(args.deploymentId!, 'deploymentId');
+    const deploymentPath = `${basePath}/${deploymentId}`;
+    if (action === 'get') {
+      const data = await ctx.httpClient.get(deploymentPath);
+      return result(true, { data: sanitizeResponse(data) });
+    }
+    if (action === 'rollback' || action === 'restore' || action === 'retire') {
+      if (args.confirm !== true) {
+        return result(false, {
+          code: 'CONFIRMATION_REQUIRED',
+          needsConfirmation: true,
+          error: `Set confirm=true to ${action} this deployment.`,
+        });
+      }
+    }
+    if (action === 'retire') {
+      const data = await ctx.httpClient.post(`${deploymentPath}/retire`, {
+        ...(args.force ? { force: true } : {}),
+      });
+      return result(true, { data: sanitizeResponse(data) });
+    }
+    const bypassError = validateBypass(args);
+    if (bypassError) return bypassError;
+    if (action === 'promote') {
+      if (!args.targetEnvironment) {
+        return result(false, { error: 'targetEnvironment is required for promote.' });
+      }
+      const data = await ctx.httpClient.post(`${deploymentPath}/promote`, {
+        targetEnvironment: args.targetEnvironment,
+        ...(args.label ? { label: args.label } : {}),
+        ...(args.description ? { description: args.description } : {}),
+        ...(args.modelOverrides ? { modelOverrides: args.modelOverrides } : {}),
+        ...bypassBody(args),
+      });
+      return result(true, { data: sanitizeResponse(data) });
+    }
+    const data = await ctx.httpClient.post(`${deploymentPath}/${action}`, bypassBody(args));
+    return result(true, { data: sanitizeResponse(data) });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return JSON.stringify({
-      success: false,
+    return result(false, {
       error: `platform_deployments ${action} failed: ${message}`,
       hint: 'Ensure the runtime is running and you are connected (platform_connect).',
     });

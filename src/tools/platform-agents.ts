@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import type { DebugContext } from './index.js';
 import { validatePathParam } from '../utils/validate.js';
+import { findSensitiveFieldPath, sanitizeResponse } from '../utils/sanitize.js';
 
 // =============================================================================
 // SCHEMA
@@ -22,11 +23,23 @@ export const platformAgentsSchema = z.object({
 
 type PlatformAgentsArgs = z.infer<typeof platformAgentsSchema>;
 
+function success(data: unknown): string {
+  return JSON.stringify(sanitizeResponse({ success: true, data }), null, 2);
+}
+
+function failure(error: string, hint?: string): string {
+  return JSON.stringify(sanitizeResponse({ success: false, error, ...(hint ? { hint } : {}) }));
+}
+
 // =============================================================================
 // HANDLER
 // =============================================================================
 
 export async function platformAgents(args: PlatformAgentsArgs, ctx: DebugContext): Promise<string> {
+  const unsafePath = findSensitiveFieldPath(args);
+  if (unsafePath) {
+    return failure(`Raw credential field "${unsafePath}" is not allowed in MCP arguments.`);
+  }
   const { action, projectId, agentName, dslContent } = args;
   const safeProjectId = validatePathParam(projectId, 'projectId');
 
@@ -34,53 +47,43 @@ export async function platformAgents(args: PlatformAgentsArgs, ctx: DebugContext
     switch (action) {
       case 'list': {
         const result = await ctx.httpClient.get(`/api/projects/${safeProjectId}/agents`);
-        return JSON.stringify({ success: true, data: result }, null, 2);
+        return success(result);
       }
 
       case 'get': {
         if (!agentName) {
-          return JSON.stringify({
-            success: false,
-            error: 'agentName is required for the get action.',
-          });
+          return failure('agentName is required for the get action.');
         }
         const safeAgentName = validatePathParam(agentName, 'agentName');
         const result = await ctx.httpClient.get(
           `/api/projects/${safeProjectId}/agents/${safeAgentName}`,
         );
-        return JSON.stringify({ success: true, data: result }, null, 2);
+        return success(result);
       }
 
       case 'save_dsl': {
         if (!agentName) {
-          return JSON.stringify({
-            success: false,
-            error: 'agentName is required for the save_dsl action.',
-          });
+          return failure('agentName is required for the save_dsl action.');
         }
         if (!dslContent) {
-          return JSON.stringify({
-            success: false,
-            error: 'dslContent is required for the save_dsl action.',
-          });
+          return failure('dslContent is required for the save_dsl action.');
         }
         const safeAgentName = validatePathParam(agentName, 'agentName');
         const result = await ctx.httpClient.put(
           `/api/projects/${safeProjectId}/agents/${safeAgentName}/dsl`,
           { dslContent },
         );
-        return JSON.stringify({ success: true, data: result }, null, 2);
+        return success(result);
       }
 
       default:
-        return JSON.stringify({ success: false, error: `Unknown action: ${action}` });
+        return failure(`Unknown action: ${action}`);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return JSON.stringify({
-      success: false,
-      error: `platform_agents ${action} failed: ${message}`,
-      hint: 'Ensure the runtime is running and you are connected (platform_connect).',
-    });
+    return failure(
+      `platform_agents ${action} failed: ${message}`,
+      'Ensure the runtime is running and you are connected (platform_connect).',
+    );
   }
 }

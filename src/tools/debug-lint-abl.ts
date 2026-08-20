@@ -7,7 +7,11 @@
 import { z } from 'zod';
 import type { DebugContext } from './index.js';
 import { loadPackageFiles, readPackageFilesFromData } from '../utils/package-files.js';
-import { formatStudioFailure, postStudioJson } from '../utils/studio-api.js';
+import {
+  formatStudioFailure,
+  postStudioJson,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 
 export const debugLintAblSchema = z.object({
   path: z.string().optional().describe('Local project folder or .zip path to lint'),
@@ -20,14 +24,24 @@ export const debugLintAblSchema = z.object({
 
 type DebugLintAblArgs = z.infer<typeof debugLintAblSchema>;
 
-export async function debugLintAbl(args: DebugLintAblArgs, ctx: DebugContext): Promise<string> {
+export async function debugLintAbl(
+  args: DebugLintAblArgs,
+  ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
+): Promise<string> {
   try {
     const loaded = await loadPackageFiles({
       path: args.path,
       files: args.files ?? readPackageFilesFromData(args.data),
     });
     const endpointPath = '/api/abl/package/lint';
-    const result = await postStudioJson(ctx, endpointPath, { files: loaded.files });
+    const result = await postStudioJson(
+      ctx,
+      endpointPath,
+      { files: loaded.files },
+      30_000,
+      dependencies,
+    );
 
     if (!result.ok) {
       return formatStudioFailure(endpointPath, result);

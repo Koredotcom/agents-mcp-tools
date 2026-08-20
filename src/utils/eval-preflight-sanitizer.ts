@@ -4,6 +4,7 @@ type PreflightOverallStatus = 'pass' | 'fail' | 'warn';
 interface SanitizedPreflightCheck {
   name: string;
   status: PreflightStatus;
+  code?: string;
   message: string;
   durationMs: number;
 }
@@ -19,9 +20,12 @@ const PUBLIC_CHECK_NAMES: Record<string, string> = {
   required_env_vars: 'service_configuration',
   llm_credentials: 'model_credentials',
   provider_key_match: 'model_configuration',
+  provider_model_availability: 'model_configuration',
   runtime_reachable: 'agent_service_connectivity',
   runtime_auth: 'agent_service_authorization',
   clickhouse: 'results_storage',
+  judge_token_split_schema: 'usage_telemetry',
+  voice_runner: 'voice_eval_execution',
 };
 
 const DEFAULT_MESSAGES: Record<PreflightStatus, string> = {
@@ -74,6 +78,30 @@ const CHECK_MESSAGES: Record<string, Record<PreflightStatus, string>> = {
     warn: 'Eval results storage should be reviewed before evals run.',
     not_checked: 'Eval results storage was not checked.',
   },
+  usage_telemetry: {
+    pass: 'Usage telemetry is ready.',
+    fail: 'Usage telemetry needs attention before evals can run.',
+    warn: 'Usage telemetry should be reviewed before evals run.',
+    not_checked: 'Usage telemetry was not checked.',
+  },
+  voice_eval_execution: {
+    pass: 'Voice eval execution is ready.',
+    fail: 'Voice eval execution needs attention before voice evals can run.',
+    warn: 'Voice eval execution should be reviewed before voice evals run.',
+    not_checked: 'Voice eval execution was not checked.',
+  },
+};
+
+const CODE_MESSAGES: Record<string, Partial<Record<PreflightStatus, string>>> = {
+  MISSING_PROVIDER_KEY: {
+    fail: 'Model credentials are missing for the selected provider.',
+  },
+  PROVIDER_MODEL_RETIRED: {
+    fail: 'The selected evaluator model is retired; choose a supported model.',
+  },
+  RUNTIME_PREFLIGHT_CIRCUIT_OPEN: {
+    warn: 'Agent service readiness probing is temporarily deferred; verify Runtime health and retry.',
+  },
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,6 +142,11 @@ function getSanitizedMessage(name: string, status: PreflightStatus): string {
   return CHECK_MESSAGES[name]?.[status] ?? DEFAULT_MESSAGES[status];
 }
 
+function sanitizeCode(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !/^[A-Z][A-Z0-9_]{1,63}$/.test(value)) return undefined;
+  return value;
+}
+
 function normalizeDuration(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     return 0;
@@ -147,11 +180,14 @@ function sanitizePreflightCheck(value: unknown): SanitizedPreflightCheck {
   const check = isRecord(value) ? value : {};
   const status = normalizeStatus(check.status);
   const name = sanitizeCheckName(check.name);
+  const code = sanitizeCode(check.code);
+  const codeMessage = code ? CODE_MESSAGES[code]?.[status] : undefined;
 
   return {
     name,
     status,
-    message: getSanitizedMessage(name, status),
+    ...(code ? { code } : {}),
+    message: codeMessage ?? getSanitizedMessage(name, status),
     durationMs: normalizeDuration(check.durationMs),
   };
 }

@@ -1,18 +1,62 @@
-/**
- * Tests for fetch utilities — FetchError classification
- */
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import type { AddressInfo } from 'node:net';
 
-import { describe, test, expect, vi, afterEach } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import { FetchError, classifyFetchError, fetchWithTimeout } from '../utils/fetch.js';
 
-const originalFetch = globalThis.fetch;
+type RequestHandler = (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
 
-afterEach(() => {
-  globalThis.fetch = originalFetch;
-});
+async function withLoopbackServer<T>(
+  handler: RequestHandler,
+  run: (baseUrl: string) => Promise<T>,
+): Promise<T> {
+  const server = createServer((req, res) => {
+    void Promise.resolve(handler(req, res)).catch((error: unknown) => {
+      res.statusCode = 500;
+      res.end(error instanceof Error ? error.message : String(error));
+    });
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+
+  const { port } = server.address() as AddressInfo;
+  try {
+    return await run(`http://127.0.0.1:${port}`);
+  } finally {
+    const closePromise = new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
+    server.closeAllConnections();
+    await closePromise;
+  }
+}
+
+async function closedLoopbackUrl(path: string): Promise<string> {
+  return withLoopbackServer(
+    (_req, res) => {
+      res.end();
+    },
+    async (baseUrl) => `${baseUrl}${path}`,
+  );
+}
+
+function typeErrorWithSystemCause(code: string): TypeError {
+  const typeError = new TypeError('fetch failed');
+  Object.defineProperty(typeError, 'cause', { value: { code }, configurable: true });
+  return typeError;
+}
 
 describe('classifyFetchError', () => {
-  const url = 'http://localhost:3112/health';
+  const url = 'http://localhost:3112/health/live';
 
   test('returns existing FetchError as-is', () => {
     const existing = new FetchError('already classified', 'TIMEOUT', url);
@@ -30,18 +74,14 @@ describe('classifyFetchError', () => {
   });
 
   test('classifies TypeError with ECONNREFUSED cause as CONNECTION_REFUSED', () => {
-    const cause = { code: 'ECONNREFUSED' };
-    const typeError = new TypeError('fetch failed');
-    (typeError as any).cause = cause;
+    const typeError = typeErrorWithSystemCause('ECONNREFUSED');
     const result = classifyFetchError(typeError, url);
     expect(result.code).toBe('CONNECTION_REFUSED');
     expect(result.url).toBe(url);
   });
 
   test('classifies TypeError with ENOTFOUND cause as DNS_LOOKUP_FAILED', () => {
-    const cause = { code: 'ENOTFOUND' };
-    const typeError = new TypeError('fetch failed');
-    (typeError as any).cause = cause;
+    const typeError = typeErrorWithSystemCause('ENOTFOUND');
     const result = classifyFetchError(typeError, url);
     expect(result.code).toBe('DNS_LOOKUP_FAILED');
   });
@@ -79,47 +119,66 @@ describe('classifyFetchError', () => {
 
 describe('fetchWithTimeout', () => {
   test('returns response on success', async () => {
-    const mockResponse = { ok: true, status: 200 } as Response;
-    globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
+    await withLoopbackServer(
+      (_req, res) => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      },
+      async (baseUrl) => {
+        const result = await fetchWithTimeout(`${baseUrl}/health/live`);
 
-    const result = await fetchWithTimeout('http://localhost:3112/health');
-    expect(result).toBe(mockResponse);
+        expect(result.ok).toBe(true);
+        expect(result.status).toBe(200);
+        await expect(result.json()).resolves.toEqual({ ok: true });
+      },
+    );
   });
 
   test('throws FetchError with TIMEOUT code on abort', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockRejectedValue(new DOMException('The operation was aborted', 'AbortError'));
+    await withLoopbackServer(
+      (_req, _res) => undefined,
+      async (baseUrl) => {
+        const url = `${baseUrl}/health/live`;
 
-    await expect(fetchWithTimeout('http://localhost:3112/health')).rejects.toThrow(FetchError);
-    try {
-      await fetchWithTimeout('http://localhost:3112/health');
-    } catch (e) {
-      expect(e).toBeInstanceOf(FetchError);
-      expect((e as FetchError).code).toBe('TIMEOUT');
-    }
+        await expect(fetchWithTimeout(url, {}, 20)).rejects.toMatchObject({
+          code: 'TIMEOUT',
+          url,
+        });
+      },
+    );
   });
 
   test('throws FetchError with CONNECTION_REFUSED on ECONNREFUSED', async () => {
-    const typeError = new TypeError('fetch failed');
-    (typeError as any).cause = { code: 'ECONNREFUSED' };
-    globalThis.fetch = vi.fn().mockRejectedValue(typeError);
+    const url = await closedLoopbackUrl('/health/live');
 
-    await expect(fetchWithTimeout('http://localhost:3112/health')).rejects.toThrow(FetchError);
-    try {
-      await fetchWithTimeout('http://localhost:3112/health');
-    } catch (e) {
-      expect((e as FetchError).code).toBe('CONNECTION_REFUSED');
-    }
+    await expect(fetchWithTimeout(url)).rejects.toMatchObject({
+      code: 'CONNECTION_REFUSED',
+      url,
+    });
   });
 
-  test('passes signal to fetch', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true } as Response);
+  test('passes request options through to the HTTP boundary', async () => {
+    const requests: Array<{ method?: string; testHeader?: string | string[] }> = [];
 
-    await fetchWithTimeout('http://localhost:3112/health');
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      'http://localhost:3112/health',
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    await withLoopbackServer(
+      (req, res) => {
+        requests.push({
+          method: req.method,
+          testHeader: req.headers['x-test-header'],
+        });
+        res.writeHead(204);
+        res.end();
+      },
+      async (baseUrl) => {
+        const result = await fetchWithTimeout(`${baseUrl}/health/live`, {
+          headers: { 'x-test-header': 'present' },
+          method: 'POST',
+        });
+
+        expect(result.status).toBe(204);
+      },
     );
+
+    expect(requests).toEqual([{ method: 'POST', testHeader: 'present' }]);
   });
 });

@@ -141,14 +141,66 @@ Constraint contract facts surfaced by package model and validation:
 Tool contract facts:
 - side_effects plus confirmation controls user approval flow; it is not an authorization policy.
 - identity_tier_required is the current identity gate. Generic tool requires/effects authorization policy is not modeled here.`,
+
+  'mcp/agent-tables': `# Agent Tables for Arch MCP
+
+Agent Tables are typed, durable, queryable project data stores backed by the platform. Arch exposes them through the agent_tables MCP tool and should use agent_tables(action: "availability") first when a user reports TABLE_UNAVAILABLE.
+
+Best-fit use cases:
+- Use Agent Tables when an agent needs durable structured rows it can query, update, and reuse over time: customer preferences, support tickets, bookings/orders, product catalogs, case queues, workflow state, and disruption/exception tracking.
+- Use project scope for shared catalogs, configuration, and operational queues; end_user scope for per-customer preferences, orders, and tickets across channels; session scope for short-lived scratch rows in one conversation.
+- Do not use Agent Tables for a single memory value (use FactStore/REMEMBER), entity-extraction value lists (use Lookup Tables), full-text/vector/document search (use SearchAI or Knowledge Bases), large blobs/files (use attachments/object storage), or analytics/aggregations (use analytics/SearchAI).
+
+Availability gates, in order:
+1. Global emergency switch: if blocked, Agent Tables is intentionally off for the runtime.
+2. Infrastructure: Agent Tables exists only when the runtime has Postgres data and DDL connections configured. Do not surface connection strings.
+3. Tenant/project config: the tenant entitlement and project overrides must resolve to enabled.
+4. Environment tier: direct deployed table-tool calls require production. Studio debug uses an isolated synthetic overlay; workflow-invoked table tools use production context.
+
+Storage model:
+- The physical store is a fixed at_* schema; a user table is catalog metadata plus rows.
+- Data is tenant/project isolated. Scope keys are derived by the server, never supplied by the caller.
+- Sensitive values are encrypted/redacted; reveal requires explicit permission and is audited.
+
+Table model:
+- A table has name, displayName, optional description, scope, schemaVersion, and columns.
+- Scopes are project, end_user, and session. Project scope is shared by the project. End-user scope is per contact/customer identity. Session scope is one conversation/scratch space.
+- Workflow tool nodes can use project-scoped table tools directly. End-user or session tables must go through an agent session with identity.
+
+Column model:
+- Types: string, integer, number, boolean, datetime, enum, reference, json.
+- Flags: required, indexed, unique, sensitive.
+- Indexed fields may be filtered/sorted. Unique implies indexed. Sensitive excludes unique. JSON excludes indexed and unique. Reference columns require reference metadata and are not for sensitive values.
+- Additive schema changes bump schemaVersion. Add column and add index are supported. Destructive drop/retype/enum changes are blocked unless a future migration path explicitly supports them.
+- TABLE_SCHEMA_VERSION_MISMATCH means the tool binding/deployment must be refreshed against the current schema version.
+
+Tool binding model:
+- Agent tools use type: table and bind a table, scope, schema version pins, and allowed operations.
+- Empty operations means read-only get/query/count.
+- Write operations include insert, update, upsert, delete, bulkInsert, bulkUpsert.
+- The caller supplies values, filters, row IDs, rowVersion, and query parameters only. The caller must never supply tenantId, projectId, environment, contactId, sessionId, scopeKey, tableId, runIdKey, SQL state, or physical storage identifiers.
+
+Query rules and SQL:
+- Structured query supports filters, predicate trees, sort, limit, cursor, and count.
+- SQL text is accepted only when query evolution is enabled. The parser compiles bounded SELECT/INSERT/UPDATE/DELETE into table IR before execution.
+- SQL templates must use placeholders for caller values and must not accept raw caller SQL.
+- Filtering/sorting on unindexed columns is rejected. Sensitive columns allow constrained equality lookup paths only when enabled and authorized.
+
+MCP tool actions:
+- availability: explain whether Agent Tables is usable and name the blocking gate.
+- list/describe: inspect table definitions, columns, scopes, schemaVersion, and capabilities.
+- create/update/migrate/delete: manage table definitions. Delete requires confirm=true.
+- insert/query/get_row/update_row/delete_row/upsert/reveal: manage project-scoped row data through Runtime APIs. Delete row requires confirm=true; reveal requires sensitive reveal permission.
+
+Safety rules:
+- Never expose Postgres URLs, tokens, raw sqlstate, key material, or physical at_* internals to the user.
+- Never expose decrypted sensitive values except through the explicit reveal action after Runtime authorization and audit.
+- Prefer least privilege operations. Do not add write/delete operations to an agent table tool unless the user explicitly needs mutation.
+- Use availability before attempting mutation when the environment or project enablement is unknown.`,
 };
 
 export const DOC_TOPICS: EmbeddedDocTopic[] = [
-  {
-    id: 'mcp/platform-contract',
-    title: 'MCP Platform Contract',
-    category: 'MCP Fallback',
-  },
+  { id: 'mcp/platform-contract', title: 'MCP Platform Contract', category: 'MCP Fallback' },
   {
     id: 'mcp/import-contract',
     title: 'Import Preview and Apply Contract',
@@ -162,6 +214,11 @@ export const DOC_TOPICS: EmbeddedDocTopic[] = [
   {
     id: 'mcp/abl-repair-loop',
     title: 'Arch ABL Repair and Eval Loop',
+    category: 'MCP Fallback',
+  },
+  {
+    id: 'mcp/agent-tables',
+    title: 'Agent Tables MCP Guide',
     category: 'MCP Fallback',
   },
 ];

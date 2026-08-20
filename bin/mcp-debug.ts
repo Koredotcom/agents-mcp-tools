@@ -6,6 +6,7 @@
  *
  * Options:
  *   --server-url <url>   Runtime server URL (or set AGENTS_URL env var)
+ *   --studio-url <url>   Studio URL when it is not co-hosted with Runtime
  *   --ws-url <url>       (Deprecated) WebSocket URL
  *   --http-url <url>     (Deprecated) HTTP API URL
  *   --help               Show help
@@ -23,11 +24,18 @@ import {
 
 function parseArgs(args: string[]): {
   serverUrl?: string;
+  studioUrl?: string;
   wsUrl?: string;
   httpUrl?: string;
   help?: boolean;
 } {
-  const result: { serverUrl?: string; wsUrl?: string; httpUrl?: string; help?: boolean } = {};
+  const result: {
+    serverUrl?: string;
+    studioUrl?: string;
+    wsUrl?: string;
+    httpUrl?: string;
+    help?: boolean;
+  } = {};
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -36,6 +44,8 @@ function parseArgs(args: string[]): {
       result.help = true;
     } else if (arg === '--server-url' && args[i + 1]) {
       result.serverUrl = args[++i];
+    } else if (arg === '--studio-url' && args[i + 1]) {
+      result.studioUrl = args[++i];
     } else if (arg === '--ws-url' && args[i + 1]) {
       result.wsUrl = args[++i];
     } else if (arg === '--http-url' && args[i + 1]) {
@@ -63,18 +73,20 @@ Arch - MCP Tools for Agent Platform
 
 ${ARCH_MCP_DESCRIPTION}
 
-Usage: agents-mcp-tools [options]
+Usage: arch-mcp-tools [options]
 
 Options:
   --server-url <url>   Runtime server URL (or set AGENTS_URL env var)
+  --studio-url <url>   Explicit Studio origin for split-port deployments
   --help, -h           Show this help message
 
 Environment Variables:
-  AGENTS_URL           Default server URL when --server-url is not passed to platform_connect
+  AGENTS_URL           Default server URL when --server-url is not passed to platform_connect.
+                       If unset, the tools ask which environment to connect to on first use.
                        Examples: https://agents.kore.ai        (production)
                                  https://agents-dev.kore.ai     (dev)
                                  https://agents-staging.kore.ai (staging)
-                                 http://localhost:3112           (local)
+                                 https://agents-qa.kore.ai       (qa)
 
 Available MCP Tools (${tools.length}):
 
@@ -86,10 +98,7 @@ Claude Code Configuration:
     "mcpServers": {
       "${ARCH_MCP_SERVER_NAME}": {
         "command": "npx",
-        "args": ["@koredotcom/agents-mcp-tools"],
-        "env": {
-          "AGENTS_URL": "https://agents.kore.ai"
-        }
+        "args": ["@koreai/arch-mcp-tools"]
       }
     }
   }
@@ -106,6 +115,7 @@ async function main(): Promise<void> {
 
   const server = new MCPDebugServer({
     serverUrl: args.serverUrl,
+    studioUrl: args.studioUrl,
     wsUrl: args.wsUrl,
     httpUrl: args.httpUrl,
   });

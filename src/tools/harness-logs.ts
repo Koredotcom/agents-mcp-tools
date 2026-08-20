@@ -18,7 +18,7 @@ const ACCOUNT_ID = 'mpHRLwiFS6aJ_4tBSlMv0w';
 const LOG_SERVICE_URL = 'https://app.harness.io/gateway/log-service/blob/download';
 
 export const harnessLogsSchema = z.object({
-  execution_id: z.string().describe('Pipeline execution ID (from harness_diagnose or Harness URL)'),
+  execution_id: z.string().describe('Pipeline execution ID (from the Harness pipeline URL)'),
   run_sequence: z.number().describe('Build number (e.g., 224, 228)'),
   pipeline_id: z.string().default('ci_build').describe('Pipeline identifier (default: ci_build)'),
   stage_id: z.string().describe('Stage identifier (e.g., build_test, docker_search_ai)'),

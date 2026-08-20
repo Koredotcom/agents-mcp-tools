@@ -1,13 +1,14 @@
 {
-  "name": "@koredotcom/agents-mcp-tools",
-  "version": "1.0.0",
+  "name": "@koreai/arch-mcp-tools",
+  "version": "1.5.0",
   "description": "Arch MCP tools for Kore.ai Agent Platform (build, evaluate, optimize, debug, analyze)",
   "type": "module",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
   "bin": {
-    "agents-mcp-tools": "./dist/bin/mcp-debug.js"
+    "arch-mcp-tools": "bin/mcp-debug.js",
+    "arch-mcp-guidance": "bin/arch-mcp-guidance.js"
   },
   "exports": {
     ".": {
@@ -17,6 +18,9 @@
   },
   "files": [
     "dist",
+    "bin/mcp-debug.js",
+    "bin/arch-mcp-guidance.js",
+    "skills",
     "!dist/src/__tests__"
   ],
   "publishConfig": {
@@ -24,7 +28,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Koredotcom/agents-mcp-tools.git"
+    "url": "git+https://github.com/Koredotcom/agents-mcp-tools.git"
   },
   "keywords": [
     "mcp",
@@ -43,6 +47,12 @@
     "test:fast": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:knowledge": "vitest run src/__tests__/knowledge-catalog.test.ts src/__tests__/operation-confidence.contract.test.ts src/__tests__/knowledge-discovery.test.ts src/__tests__/guidance-installer.test.ts --coverage --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/knowledge --coverage.include=src/knowledge/catalog.ts --coverage.include=src/knowledge/confidence-evidence.ts --coverage.include=src/knowledge/discovery.ts --coverage.include=src/knowledge/verification-guidance.ts --coverage.include=src/guidance-installer.ts --coverage.thresholds.perFile --coverage.thresholds.statements=85 --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85 && vitest run --coverage --coverage.reporter=text --coverage.reporter=json-summary --coverage.reportsDirectory=coverage/knowledge-seams --coverage.include=src/server.ts --coverage.include=src/tools/index.ts --coverage.thresholds.perFile --coverage.thresholds.statements=85 --coverage.thresholds.lines=85 --coverage.thresholds.functions=85 --coverage.thresholds.branches=85",
+    "test:e2e:project-builder": "node scripts/run-project-builder-e2e.mjs",
+    "test:e2e:project-builder:prior": "node scripts/run-old-studio-compat.mjs",
+    "test:e2e:project-builder:upgrade": "node scripts/run-actor-upgrade-compat.mjs",
+    "test:e2e:session-history": "node scripts/run-session-history-e2e.mjs --config scripts/session-history-current.config.json",
+    "test:e2e:session-history:prior": "node scripts/run-session-history-prior-runtime.mjs --config scripts/session-history-prior.config.json",
     "prepublishOnly": "pnpm run clean && pnpm run build && pnpm run test"
   },
   "dependencies": {

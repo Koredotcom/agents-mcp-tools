@@ -1,0 +1,110 @@
+{
+  "lane": "current",
+  "runtimeBaseUrl": "http://127.0.0.1:13212",
+  "isolation": {
+    "mongoPort": 27119,
+    "redisPort": 6391,
+    "clickhouseHttpPort": 8135,
+    "runtimePort": 13212,
+    "mongoDatabase": "arch_history_current",
+    "redisNamespace": "arch-history-current",
+    "clickhouseDatabase": "abl_platform"
+  },
+  "preparationCommands": [
+    {
+      "executable": "pnpm",
+      "argv": ["--filter", "@koreai/arch-mcp-tools", "build"],
+      "cwd": "../../.."
+    },
+    {
+      "executable": "pnpm",
+      "argv": ["--filter", "@agent-platform/runtime^...", "build"],
+      "cwd": "../../.."
+    },
+    {
+      "executable": "pnpm",
+      "argv": ["--filter", "@agent-platform/runtime", "build"],
+      "cwd": "../../.."
+    }
+  ],
+  "services": [
+    {
+      "name": "mongo",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-current-mongo",
+          "-p",
+          "27119:27017",
+          "mongo:7",
+          "mongod",
+          "--bind_ip_all"
+        ]
+      },
+      "readyCommand": {
+        "executable": "docker",
+        "argv": [
+          "exec",
+          "arch-history-current-mongo",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.runCommand({ping:1}).ok"
+        ]
+      }
+    },
+    {
+      "name": "redis",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-current-redis",
+          "-p",
+          "6391:6379",
+          "redis:7-alpine"
+        ]
+      },
+      "readyCommand": {
+        "executable": "docker",
+        "argv": ["exec", "arch-history-current-redis", "redis-cli", "ping"]
+      }
+    },
+    {
+      "name": "clickhouse",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-current-clickhouse",
+          "-e",
+          "CLICKHOUSE_USER=abl_admin",
+          "-e",
+          "CLICKHOUSE_PASSWORD=arch_history_test",
+          "-p",
+          "8135:8123",
+          "clickhouse/clickhouse-server:24.3"
+        ]
+      },
+      "readyUrl": "http://127.0.0.1:8135/ping"
+    },
+    {
+      "name": "runtime",
+      "command": {
+        "executable": "pnpm",
+        "argv": ["--filter", "@agent-platform/runtime", "start"],
+        "cwd": "../../..",
+        "envRefs": []
+      },
+      "readyUrl": "http://127.0.0.1:13212/health/live"
+    }
+  ],
+  "reportDirectory": "../test-reports/session-history-current"
+}

@@ -1,0 +1,2652 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`operation confidence focused evidence > agent_tables:availability matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:3112/api/projects/projectId-1/tables/availability?environment=environment-1&deploymentId=deploymentId-1&invocationMode=direct",
+  ],
+  "operationId": "agent_tables:availability",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:3112/api/projects/projectId-1/tables",
+  ],
+  "operationId": "agent_tables:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1",
+  ],
+  "operationId": "agent_tables:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:delete_row matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows/rowId-1?rowVersion=1",
+  ],
+  "operationId": "agent_tables:delete_row",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:describe matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1",
+  ],
+  "operationId": "agent_tables:describe",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:get_row matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows/rowId-1",
+  ],
+  "operationId": "agent_tables:get_row",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:insert matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows",
+  ],
+  "operationId": "agent_tables:insert",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:3112/api/projects/projectId-1/tables",
+  ],
+  "operationId": "agent_tables:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:migrate matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/migrate",
+  ],
+  "operationId": "agent_tables:migrate",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:query matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows?count=true&q=%7B%22sample%22%3A%22sample-1%22%7D",
+  ],
+  "operationId": "agent_tables:query",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:reveal matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows/rowId-1/reveal",
+  ],
+  "operationId": "agent_tables:reveal",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1",
+  ],
+  "operationId": "agent_tables:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:update_row matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/rows/rowId-1",
+  ],
+  "operationId": "agent_tables:update_row",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > agent_tables:upsert matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:3112/api/projects/projectId-1/tables/table-1/upsert",
+  ],
+  "operationId": "agent_tables:upsert",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_analyze_session:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_analyze_session:invoke",
+  "outcomeKeys": [
+    "agentName",
+    "analysis",
+    "sessionId",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_diagnose:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/diagnostics/sessions/sessionId-1?depth=quick",
+  ],
+  "operationId": "debug_diagnose:invoke",
+  "outcomeKeys": [],
+  "outcomeText": "INSPECT: agent -- HEALTHY
+
+No configuration data returned by the diagnostic engine.",
+}
+`;
+
+exports[`operation confidence focused evidence > debug_diagnose_transcript:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/abl/package/diagnose-transcript",
+  ],
+  "operationId": "debug_diagnose_transcript:invoke",
+  "outcomeKeys": [
+    "data",
+    "fileWarnings",
+    "source",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_docs:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/abl/docs?search=query-1",
+  ],
+  "operationId": "debug_docs:invoke",
+  "outcomeKeys": [
+    "detail",
+    "hint",
+    "query",
+    "resultCount",
+    "results",
+    "source",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_explain_decision:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_explain_decision:invoke",
+  "outcomeKeys": [
+    "explanation",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_get_current_state:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_get_current_state:invoke",
+  "outcomeKeys": [
+    "agentId",
+    "lastActivityAt",
+    "sessionId",
+    "state",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_get_errors:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_get_errors:invoke",
+  "outcomeKeys": [
+    "errors",
+    "escalations",
+    "sessionId",
+    "success",
+    "summary",
+    "warnings",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_get_flow_graph:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_get_flow_graph:invoke",
+  "outcomeKeys": [
+    "agentName",
+    "format",
+    "graph",
+    "mode",
+    "sessionId",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_get_span_tree:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_get_span_tree:invoke",
+  "outcomeKeys": [
+    "message",
+    "sessionId",
+    "stats",
+    "success",
+    "tree",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_harness_logs:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:https://app.harness.io/gateway/log-service/blob/download?accountID=mpHRLwiFS6aJ_4tBSlMv0w&prefix=mpHRLwiFS6aJ_4tBSlMv0w%2Fpipeline%2Fpipeline_id-1%2F1%2F-execution_id-1%2Fstage_id-1%2Fstep_id-1",
+    "fetch:GET:https://download.invalid/log.zip",
+  ],
+  "operationId": "debug_harness_logs:invoke",
+  "outcomeKeys": [
+    "execution_id",
+    "filter",
+    "logs",
+    "returned_lines",
+    "run_sequence",
+    "stage",
+    "total_lines",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_lint_abl:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/abl/package/lint",
+  ],
+  "operationId": "debug_lint_abl:invoke",
+  "outcomeKeys": [
+    "data",
+    "fileWarnings",
+    "source",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_list_active_sessions:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_list_active_sessions:invoke",
+  "outcomeKeys": [
+    "count",
+    "sessions",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_list_agents:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:list-agents",
+  ],
+  "operationId": "debug_list_agents:invoke",
+  "outcomeKeys": [
+    "agents",
+    "domains",
+    "success",
+    "total",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_load_agent:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "session:create",
+  ],
+  "operationId": "debug_load_agent:invoke",
+  "outcomeKeys": [
+    "agent",
+    "message",
+    "sessionId",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_send_message:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "session:touch",
+  ],
+  "operationId": "debug_send_message:invoke",
+  "outcomeKeys": [
+    "messageId",
+    "response",
+    "responseLength",
+    "sentText",
+    "sessionId",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_session:subscribe matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "session:create",
+    "session:activate",
+  ],
+  "operationId": "debug_session:subscribe",
+  "outcomeKeys": [
+    "bufferedEventCount",
+    "hasMore",
+    "message",
+    "replayedEvents",
+    "sessionId",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_session:unsubscribe matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_session:unsubscribe",
+  "outcomeKeys": [
+    "message",
+    "sessionId",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_session_history:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/sessions/sessionId-1/traces?limit=1&offset=1&types=types-1&eventType=eventType-1&spanId=spanId-1",
+  ],
+  "operationId": "debug_session_history:get",
+  "outcomeKeys": [
+    "_meta",
+    "limit",
+    "offset",
+    "success",
+    "total",
+    "traces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_session_history:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/sessions?limit=1&offset=1&status=status-1&channel=channel-1&agentName=agentName-1&environment=environment-1&disposition=disposition-1&outcome=outcome-1&q=q-1&mine=true&to=2026-08-20T00%3A00%3A00.000Z&range=1d&sortBy=id&sortDir=asc",
+  ],
+  "operationId": "debug_session_history:list",
+  "outcomeKeys": [
+    "_meta",
+    "limit",
+    "offset",
+    "sessions",
+    "success",
+    "total",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_traces:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "debug_traces:invoke",
+  "outcomeKeys": [
+    "count",
+    "events",
+    "filters",
+    "sessionId",
+    "success",
+    "totalMatches",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > debug_why_transcript_failed:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/abl/package/diagnose-transcript",
+  ],
+  "operationId": "debug_why_transcript_failed:invoke",
+  "outcomeKeys": [
+    "data",
+    "fileWarnings",
+    "source",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_agents:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1",
+  ],
+  "operationId": "platform_agents:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_agents:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents",
+  ],
+  "operationId": "platform_agents:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_agents:save_dsl matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:PUT:/api/projects/projectId-1/agents/agentName-1/dsl",
+  ],
+  "operationId": "platform_agents:save_dsl",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_auto_loop:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-auto-loop/runs",
+  ],
+  "operationId": "platform_arch_auto_loop:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_auto_loop:execute_action matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-auto-loop/runs/runId-1/actions",
+  ],
+  "operationId": "platform_arch_auto_loop:execute_action",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_auto_loop:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-auto-loop/runs/runId-1",
+  ],
+  "operationId": "platform_arch_auto_loop:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_auto_loop:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-auto-loop/runs",
+  ],
+  "operationId": "platform_arch_auto_loop:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_auto_loop:record_decision matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-auto-loop/runs/runId-1/decisions",
+  ],
+  "operationId": "platform_arch_auto_loop:record_decision",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:cancel matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/sessions/sessionId-1/cancel",
+  ],
+  "operationId": "platform_arch_sop:cancel",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:continue matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/message",
+  ],
+  "operationId": "platform_arch_sop:continue",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:create_project matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/message",
+  ],
+  "operationId": "platform_arch_sop:create_project",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:create_session matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/sessions",
+  ],
+  "operationId": "platform_arch_sop:create_session",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:get_session matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-ai/sessions/sessionId-1",
+  ],
+  "operationId": "platform_arch_sop:get_session",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:recover matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/sessions/sessionId-1/recover",
+  ],
+  "operationId": "platform_arch_sop:recover",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:send_message matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/message",
+  ],
+  "operationId": "platform_arch_sop:send_message",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_arch_sop:upload_file matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/arch-ai/files",
+  ],
+  "operationId": "platform_arch_sop:upload_file",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles",
+  ],
+  "operationId": "platform_auth_profiles:create",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/profileId-1?confirm=true",
+  ],
+  "operationId": "platform_auth_profiles:delete",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/profileId-1",
+  ],
+  "operationId": "platform_auth_profiles:get",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:integrations matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/integrations",
+  ],
+  "operationId": "platform_auth_profiles:integrations",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles?cursor=cursor-1&limit=1&search=search-1&authType=authType-1&connector=connector-1&environment=environment-1&scope=project",
+  ],
+  "operationId": "platform_auth_profiles:list",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:oauth_initiate matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/oauth/initiate",
+  ],
+  "operationId": "platform_auth_profiles:oauth_initiate",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:providers matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/providers",
+  ],
+  "operationId": "platform_auth_profiles:providers",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:revoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/profileId-1/revoke",
+  ],
+  "operationId": "platform_auth_profiles:revoke",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PUT:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/profileId-1",
+  ],
+  "operationId": "platform_auth_profiles:update",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_auth_profiles:validate matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/auth-profiles/profileId-1/validate",
+  ],
+  "operationId": "platform_auth_profiles:validate",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_config:get_llm_config matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/llm-config",
+  ],
+  "operationId": "platform_config:get_llm_config",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_config:get_settings matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/settings",
+  ],
+  "operationId": "platform_config:get_settings",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_config:update_llm_config matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:PUT:/api/projects/projectId-1/llm-config",
+  ],
+  "operationId": "platform_config:update_llm_config",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_config:update_settings matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:PUT:/api/projects/projectId-1/settings",
+  ],
+  "operationId": "platform_config:update_settings",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/deployments",
+  ],
+  "operationId": "platform_deployments:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/deployments/deploymentId-1",
+  ],
+  "operationId": "platform_deployments:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/deployments",
+  ],
+  "operationId": "platform_deployments:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:promote matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/deployments/deploymentId-1/promote",
+  ],
+  "operationId": "platform_deployments:promote",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:restore matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/deployments/deploymentId-1/restore",
+  ],
+  "operationId": "platform_deployments:restore",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:retire matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/deployments/deploymentId-1/retire",
+  ],
+  "operationId": "platform_deployments:retire",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_deployments:rollback matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/deployments/deploymentId-1/rollback",
+  ],
+  "operationId": "platform_deployments:rollback",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators",
+  ],
+  "operationId": "platform_eval_evaluators:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators/evaluatorId-1",
+  ],
+  "operationId": "platform_eval_evaluators:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators/evaluatorId-1",
+  ],
+  "operationId": "platform_eval_evaluators:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators?sample=sample-1",
+  ],
+  "operationId": "platform_eval_evaluators:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:templates matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators/templates",
+  ],
+  "operationId": "platform_eval_evaluators:templates",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_evaluators:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/evals/evaluators/evaluatorId-1",
+  ],
+  "operationId": "platform_eval_evaluators:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas",
+  ],
+  "operationId": "platform_eval_personas:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas/personaId-1",
+  ],
+  "operationId": "platform_eval_personas:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:generate matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/generate/personas",
+  ],
+  "operationId": "platform_eval_personas:generate",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas/personaId-1",
+  ],
+  "operationId": "platform_eval_personas:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas?sample=sample-1",
+  ],
+  "operationId": "platform_eval_personas:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:templates matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas/templates",
+  ],
+  "operationId": "platform_eval_personas:templates",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_personas:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/evals/personas/personaId-1",
+  ],
+  "operationId": "platform_eval_personas:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:cancel matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1/cancel",
+  ],
+  "operationId": "platform_eval_runs:cancel",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:cases matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1/cases?sample=sample-1",
+  ],
+  "operationId": "platform_eval_runs:cases",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:compare matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/compare?sample=sample-1&runIds=run-a%2Crun-b",
+  ],
+  "operationId": "platform_eval_runs:compare",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs",
+  ],
+  "operationId": "platform_eval_runs:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1",
+  ],
+  "operationId": "platform_eval_runs:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:heatmap matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1/heatmap?sample=sample-1",
+  ],
+  "operationId": "platform_eval_runs:heatmap",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs?sample=sample-1",
+  ],
+  "operationId": "platform_eval_runs:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:preflight matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/preflight",
+  ],
+  "operationId": "platform_eval_runs:preflight",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:quick matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/quick",
+  ],
+  "operationId": "platform_eval_runs:quick",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:start matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1/start",
+  ],
+  "operationId": "platform_eval_runs:start",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:status matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1/status",
+  ],
+  "operationId": "platform_eval_runs:status",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_runs:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/evals/runs/runId-1",
+  ],
+  "operationId": "platform_eval_runs:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/scenarios",
+  ],
+  "operationId": "platform_eval_scenarios:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/evals/scenarios/scenarioId-1",
+  ],
+  "operationId": "platform_eval_scenarios:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:generate matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/generate/scenarios",
+  ],
+  "operationId": "platform_eval_scenarios:generate",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/scenarios/scenarioId-1",
+  ],
+  "operationId": "platform_eval_scenarios:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/scenarios?sample=sample-1",
+  ],
+  "operationId": "platform_eval_scenarios:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_scenarios:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/evals/scenarios/scenarioId-1",
+  ],
+  "operationId": "platform_eval_scenarios:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_sets:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/evals/sets",
+  ],
+  "operationId": "platform_eval_sets:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_sets:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/evals/sets/setId-1",
+  ],
+  "operationId": "platform_eval_sets:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_sets:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/sets/setId-1",
+  ],
+  "operationId": "platform_eval_sets:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_sets:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/evals/sets?sample=sample-1",
+  ],
+  "operationId": "platform_eval_sets:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_eval_sets:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/evals/sets/setId-1",
+  ],
+  "operationId": "platform_eval_sets:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_import_export:export matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/export?include_version_history=true",
+  ],
+  "operationId": "platform_import_export:export",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_import_export:export_preview matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/export/preview",
+  ],
+  "operationId": "platform_import_export:export_preview",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_import_export:import matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/import/preview",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/import/apply",
+  ],
+  "operationId": "platform_import_export:import",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_import_export:import_preview matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/import/preview",
+  ],
+  "operationId": "platform_import_export:import_preview",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/connections",
+  ],
+  "operationId": "platform_integrations:create",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/connections/connectionId-1",
+  ],
+  "operationId": "platform_integrations:delete",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/connections/connectionId-1",
+  ],
+  "operationId": "platform_integrations:get",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/connections",
+  ],
+  "operationId": "platform_integrations:list",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:test matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/connections/connectionId-1/test",
+  ],
+  "operationId": "platform_integrations:test",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_integrations:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PUT:http://127.0.0.1:5173/api/projects/projectId-1/connections/connectionId-1",
+  ],
+  "operationId": "platform_integrations:update",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:authorize matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/authorize",
+  ],
+  "operationId": "platform_mcp_servers:authorize",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers",
+  ],
+  "operationId": "platform_mcp_servers:create",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1",
+  ],
+  "operationId": "platform_mcp_servers:delete",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:disconnect matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/disconnect",
+  ],
+  "operationId": "platform_mcp_servers:disconnect",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:discover_import matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/tools/discover",
+  ],
+  "operationId": "platform_mcp_servers:discover_import",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:discover_preview matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/tools/discover/preview",
+  ],
+  "operationId": "platform_mcp_servers:discover_preview",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1",
+  ],
+  "operationId": "platform_mcp_servers:get",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:grant_status matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/grant-status",
+  ],
+  "operationId": "platform_mcp_servers:grant_status",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers",
+  ],
+  "operationId": "platform_mcp_servers:list",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:list_tools matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/tools",
+  ],
+  "operationId": "platform_mcp_servers:list_tools",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:test_connection matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/test-connection",
+  ],
+  "operationId": "platform_mcp_servers:test_connection",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:test_tool matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1/tools/toolName-1/test",
+  ],
+  "operationId": "platform_mcp_servers:test_tool",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_mcp_servers:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PUT:http://127.0.0.1:5173/api/projects/projectId-1/mcp-servers/serverId-1",
+  ],
+  "operationId": "platform_mcp_servers:update",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_package_model:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/abl/package/model",
+  ],
+  "operationId": "platform_package_model:invoke",
+  "outcomeKeys": [
+    "data",
+    "fileWarnings",
+    "source",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder:describe matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "platform_project_builder:describe",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder:inspect matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-project-builder/dependency-report?domains=workflow&includeReadiness=true",
+  ],
+  "operationId": "platform_project_builder:inspect",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder:plan matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds",
+  ],
+  "operationId": "platform_project_builder:plan",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:cancel matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/cancel",
+  ],
+  "operationId": "platform_project_builder_operations:cancel",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:create_confirmation_grant matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/confirmation-grants",
+  ],
+  "operationId": "platform_project_builder_operations:create_confirmation_grant",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:dependency_report matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/dependency-report?includeReadiness=false",
+  ],
+  "operationId": "platform_project_builder_operations:dependency_report",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:execute_action matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/actions",
+  ],
+  "operationId": "platform_project_builder_operations:execute_action",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds?cursor=cursor-1&status=status-1&stage=stage-1&limit=1",
+  ],
+  "operationId": "platform_project_builder_operations:list",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:read matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1",
+  ],
+  "operationId": "platform_project_builder_operations:read",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:readiness_report matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/dependency-report?includeReadiness=true",
+  ],
+  "operationId": "platform_project_builder_operations:readiness_report",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_project_builder_operations:resume matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/arch-mcp/capabilities",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/arch-workflow-builds/operationId-1/resume",
+  ],
+  "operationId": "platform_project_builder_operations:resume",
+  "outcomeKeys": [
+    "action",
+    "data",
+    "error",
+    "schemaVersion",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_projects:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects",
+  ],
+  "operationId": "platform_projects:create",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_projects:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1",
+  ],
+  "operationId": "platform_projects:delete",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_projects:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1",
+  ],
+  "operationId": "platform_projects:get",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_projects:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects",
+  ],
+  "operationId": "platform_projects:list",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_projects:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1",
+  ],
+  "operationId": "platform_projects:update",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_sdk_channels:create_channel matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/sdk-channels",
+  ],
+  "operationId": "platform_sdk_channels:create_channel",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_sdk_channels:create_key matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/sdk-public-keys",
+  ],
+  "operationId": "platform_sdk_channels:create_key",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_sdk_channels:list_channels matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/sdk-channels?limit=1&offset=1",
+  ],
+  "operationId": "platform_sdk_channels:list_channels",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_sdk_channels:list_keys matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/sdk-public-keys",
+  ],
+  "operationId": "platform_sdk_channels:list_keys",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/tools",
+  ],
+  "operationId": "platform_tools:create",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/tools/toolId-1?force=true",
+  ],
+  "operationId": "platform_tools:delete",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/tools/toolId-1",
+  ],
+  "operationId": "platform_tools:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/tools?page=1&limit=1",
+  ],
+  "operationId": "platform_tools:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:test matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/tools/toolId-1/test",
+  ],
+  "operationId": "platform_tools:test",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_tools:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PUT:http://127.0.0.1:5173/api/projects/projectId-1/tools/toolId-1",
+  ],
+  "operationId": "platform_tools:update",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_validate_package:invoke matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/abl/package/validate",
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/import/preview",
+  ],
+  "operationId": "platform_validate_package:invoke",
+  "outcomeKeys": [
+    "data",
+    "fileWarnings",
+    "importPreview",
+    "source",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:audit matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1/versions/version-1/audit?limit=1",
+  ],
+  "operationId": "platform_versions:audit",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "platform_versions:create",
+  "outcomeKeys": [
+    "code",
+    "error",
+    "success",
+    "successor",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:diff matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1/versions/version-1/diff/otherVersion-1",
+  ],
+  "operationId": "platform_versions:diff",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1/versions/version-1",
+  ],
+  "operationId": "platform_versions:get",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1/versions",
+  ],
+  "operationId": "platform_versions:list",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:promote matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [],
+  "operationId": "platform_versions:promote",
+  "outcomeKeys": [
+    "code",
+    "error",
+    "success",
+    "successor",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:publish matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:POST:/api/projects/projectId-1/agents/agentName-1/versions/publish",
+  ],
+  "operationId": "platform_versions:publish",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_versions:qualifications matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "http:GET:/api/projects/projectId-1/agents/agentName-1/versions/version-1/qualifications?limit=1",
+  ],
+  "operationId": "platform_versions:qualifications",
+  "outcomeKeys": [
+    "data",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:create matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/workflows",
+  ],
+  "operationId": "platform_workflows:create",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:create_tool matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/tools",
+  ],
+  "operationId": "platform_workflows:create_tool",
+  "outcomeKeys": [
+    "data",
+    "nextActions",
+    "success",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:delete matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:DELETE:http://127.0.0.1:5173/api/projects/projectId-1/workflows/workflowId-1",
+  ],
+  "operationId": "platform_workflows:delete",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:execute matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/workflows/workflowId-1/execute",
+  ],
+  "operationId": "platform_workflows:execute",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:get matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/workflows/workflowId-1",
+  ],
+  "operationId": "platform_workflows:get",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:list matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:GET:http://127.0.0.1:5173/api/projects/projectId-1/workflows?limit=1&offset=1",
+  ],
+  "operationId": "platform_workflows:list",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:publish matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:POST:http://127.0.0.1:5173/api/projects/projectId-1/workflows/workflowId-1/versions/publish",
+  ],
+  "operationId": "platform_workflows:publish",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;
+
+exports[`operation confidence focused evidence > platform_workflows:update matches its schema, handler outcome, and transport-effect contract 1`] = `
+{
+  "effects": [
+    "fetch:PATCH:http://127.0.0.1:5173/api/projects/projectId-1/workflows/workflowId-1",
+  ],
+  "operationId": "platform_workflows:update",
+  "outcomeKeys": [
+    "data",
+    "items",
+    "preview",
+    "previewDigest",
+    "project",
+    "projects",
+    "success",
+    "tenants",
+    "workspaces",
+  ],
+}
+`;

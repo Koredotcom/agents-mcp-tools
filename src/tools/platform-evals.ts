@@ -7,7 +7,11 @@
 
 import { z } from 'zod';
 import type { DebugContext } from './index.js';
-import { requestStudioJson, formatStudioFailure } from '../utils/studio-api.js';
+import {
+  requestStudioJson,
+  formatStudioFailure,
+  type StudioApiDependencies,
+} from '../utils/studio-api.js';
 import { sanitizeResponse } from '../utils/sanitize.js';
 import { sanitizeEvalPreflightResponse } from '../utils/eval-preflight-sanitizer.js';
 import { validatePathParam } from '../utils/validate.js';
@@ -94,97 +98,169 @@ const COLLECTION_ID_PARAM: Record<Collection, string> = {
 export async function platformEvalPersonas(
   args: PlatformEvalPersonasArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   if (args.action === 'generate') {
-    return runProjectAction(ctx, args.projectId, 'generate/personas', args.body ?? {});
+    return runProjectAction(
+      ctx,
+      args.projectId,
+      'generate/personas',
+      args.body ?? {},
+      undefined,
+      dependencies,
+    );
   }
-  return runCollectionTool(ctx, {
-    projectId: args.projectId,
-    collection: 'personas',
-    action: args.action,
-    id: args.personaId,
-    query: args.query,
-    body: args.body,
-    confirm: args.confirm,
-  });
+  return runCollectionTool(
+    ctx,
+    {
+      projectId: args.projectId,
+      collection: 'personas',
+      action: args.action,
+      id: args.personaId,
+      query: args.query,
+      body: args.body,
+      confirm: args.confirm,
+    },
+    dependencies,
+  );
 }
 
 export async function platformEvalScenarios(
   args: PlatformEvalScenariosArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   if (args.action === 'generate') {
-    return runProjectAction(ctx, args.projectId, 'generate/scenarios', args.body ?? {});
+    return runProjectAction(
+      ctx,
+      args.projectId,
+      'generate/scenarios',
+      args.body ?? {},
+      undefined,
+      dependencies,
+    );
   }
-  return runCollectionTool(ctx, {
-    projectId: args.projectId,
-    collection: 'scenarios',
-    action: args.action,
-    id: args.scenarioId,
-    query: args.query,
-    body: args.body,
-    confirm: args.confirm,
-  });
+  return runCollectionTool(
+    ctx,
+    {
+      projectId: args.projectId,
+      collection: 'scenarios',
+      action: args.action,
+      id: args.scenarioId,
+      query: args.query,
+      body: args.body,
+      confirm: args.confirm,
+    },
+    dependencies,
+  );
 }
 
 export async function platformEvalEvaluators(
   args: PlatformEvalEvaluatorsArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
-  return runCollectionTool(ctx, {
-    projectId: args.projectId,
-    collection: 'evaluators',
-    action: args.action,
-    id: args.evaluatorId,
-    query: args.query,
-    body: args.body,
-    confirm: args.confirm,
-  });
+  return runCollectionTool(
+    ctx,
+    {
+      projectId: args.projectId,
+      collection: 'evaluators',
+      action: args.action,
+      id: args.evaluatorId,
+      query: args.query,
+      body: args.body,
+      confirm: args.confirm,
+    },
+    dependencies,
+  );
 }
 
 export async function platformEvalSets(
   args: PlatformEvalSetsArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
-  return runCollectionTool(ctx, {
-    projectId: args.projectId,
-    collection: 'sets',
-    action: args.action,
-    id: args.setId,
-    query: args.query,
-    body: args.body,
-    confirm: args.confirm,
-  });
+  return runCollectionTool(
+    ctx,
+    {
+      projectId: args.projectId,
+      collection: 'sets',
+      action: args.action,
+      id: args.setId,
+      query: args.query,
+      body: args.body,
+      confirm: args.confirm,
+    },
+    dependencies,
+  );
 }
 
 export async function platformEvalRuns(
   args: PlatformEvalRunsArgs,
   ctx: DebugContext,
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const basePath = evalBasePath(args.projectId, 'runs');
 
     switch (args.action) {
       case 'list':
-        return studioRequest(ctx, 'GET', withQuery(basePath, args.query));
+        return studioRequest(
+          ctx,
+          'GET',
+          withQuery(basePath, args.query),
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'create':
-        return studioRequest(ctx, 'POST', basePath, args.body ?? {});
+        return studioRequest(ctx, 'POST', basePath, args.body ?? {}, undefined, dependencies);
       case 'preflight':
-        return runProjectAction(ctx, args.projectId, 'preflight', args.body ?? {}, {
-          sanitizeBody: sanitizeEvalPreflightResponse,
-        });
+        return runProjectAction(
+          ctx,
+          args.projectId,
+          'preflight',
+          args.body ?? {},
+          {
+            sanitizeBody: sanitizeEvalPreflightResponse,
+          },
+          dependencies,
+        );
       case 'quick':
-        return runProjectAction(ctx, args.projectId, 'quick', args.body ?? {});
+        return runProjectAction(
+          ctx,
+          args.projectId,
+          'quick',
+          args.body ?? {},
+          undefined,
+          dependencies,
+        );
       case 'compare':
-        return studioRequest(ctx, 'GET', withQuery(`${basePath}/compare`, compareQuery(args)));
+        return studioRequest(
+          ctx,
+          'GET',
+          withQuery(`${basePath}/compare`, compareQuery(args)),
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'get':
-        return studioRequest(ctx, 'GET', `${basePath}/${requireId(args.runId, 'runId')}`);
+        return studioRequest(
+          ctx,
+          'GET',
+          `${basePath}/${requireId(args.runId, 'runId')}`,
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'update':
         return studioRequest(
           ctx,
           'PATCH',
           `${basePath}/${requireId(args.runId, 'runId')}`,
           args.body ?? {},
+          undefined,
+          dependencies,
         );
       case 'start':
         return studioRequest(
@@ -192,6 +268,8 @@ export async function platformEvalRuns(
           'POST',
           `${basePath}/${requireId(args.runId, 'runId')}/start`,
           args.body ?? {},
+          undefined,
+          dependencies,
         );
       case 'cancel':
         return studioRequest(
@@ -199,20 +277,35 @@ export async function platformEvalRuns(
           'POST',
           `${basePath}/${requireId(args.runId, 'runId')}/cancel`,
           args.body ?? {},
+          undefined,
+          dependencies,
         );
       case 'status':
-        return studioRequest(ctx, 'GET', `${basePath}/${requireId(args.runId, 'runId')}/status`);
+        return studioRequest(
+          ctx,
+          'GET',
+          `${basePath}/${requireId(args.runId, 'runId')}/status`,
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'heatmap':
         return studioRequest(
           ctx,
           'GET',
           withQuery(`${basePath}/${requireId(args.runId, 'runId')}/heatmap`, args.query),
+          undefined,
+          undefined,
+          dependencies,
         );
       case 'cases':
         return studioRequest(
           ctx,
           'GET',
           withQuery(`${basePath}/${requireId(args.runId, 'runId')}/cases`, args.query),
+          undefined,
+          undefined,
+          dependencies,
         );
     }
   } catch (err) {
@@ -231,6 +324,7 @@ async function runCollectionTool(
     body?: Record<string, unknown>;
     confirm?: boolean;
   },
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const basePath = evalBasePath(input.projectId, input.collection);
@@ -238,19 +332,42 @@ async function runCollectionTool(
 
     switch (input.action) {
       case 'list':
-        return studioRequest(ctx, 'GET', withQuery(basePath, input.query));
+        return studioRequest(
+          ctx,
+          'GET',
+          withQuery(basePath, input.query),
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'templates':
-        return studioRequest(ctx, 'GET', `${basePath}/templates`);
+        return studioRequest(
+          ctx,
+          'GET',
+          `${basePath}/templates`,
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'create':
-        return studioRequest(ctx, 'POST', basePath, input.body ?? {});
+        return studioRequest(ctx, 'POST', basePath, input.body ?? {}, undefined, dependencies);
       case 'get':
-        return studioRequest(ctx, 'GET', `${basePath}/${requireId(input.id, idParam)}`);
+        return studioRequest(
+          ctx,
+          'GET',
+          `${basePath}/${requireId(input.id, idParam)}`,
+          undefined,
+          undefined,
+          dependencies,
+        );
       case 'update':
         return studioRequest(
           ctx,
           'PATCH',
           `${basePath}/${requireId(input.id, idParam)}`,
           input.body ?? {},
+          undefined,
+          dependencies,
         );
       case 'delete':
         if (input.confirm !== true) {
@@ -264,7 +381,14 @@ async function runCollectionTool(
             2,
           );
         }
-        return studioRequest(ctx, 'DELETE', `${basePath}/${requireId(input.id, idParam)}`);
+        return studioRequest(
+          ctx,
+          'DELETE',
+          `${basePath}/${requireId(input.id, idParam)}`,
+          undefined,
+          undefined,
+          dependencies,
+        );
     }
   } catch (err) {
     return jsonError(err);
@@ -277,10 +401,11 @@ function runProjectAction(
   actionPath: string,
   body: Record<string, unknown>,
   options?: { sanitizeBody?: (body: unknown) => unknown },
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
     const basePath = `/api/projects/${validatePathParam(projectId, 'projectId')}/evals`;
-    return studioRequest(ctx, 'POST', `${basePath}/${actionPath}`, body, options);
+    return studioRequest(ctx, 'POST', `${basePath}/${actionPath}`, body, options, dependencies);
   } catch (err) {
     return Promise.resolve(jsonError(err));
   }
@@ -341,14 +466,19 @@ async function studioRequest(
   path: string,
   body?: unknown,
   options?: { sanitizeBody?: (body: unknown) => unknown },
+  dependencies?: StudioApiDependencies,
 ): Promise<string> {
   try {
-    const result = await requestStudioJson(ctx, {
-      method,
-      path,
-      ...(body !== undefined ? { body } : {}),
-      timeoutMs: method === 'GET' ? 15_000 : 30_000,
-    });
+    const result = await requestStudioJson(
+      ctx,
+      {
+        method,
+        path,
+        ...(body !== undefined ? { body } : {}),
+        timeoutMs: method === 'GET' ? 15_000 : 30_000,
+      },
+      dependencies,
+    );
 
     if (!result.ok) {
       return formatStudioFailure(path, result, method);

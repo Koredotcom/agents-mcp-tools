@@ -1,0 +1,101 @@
+{
+  "lane": "prior",
+  "runtimeBaseUrl": "http://127.0.0.1:13213",
+  "repositoryRoot": "../../..",
+  "expectedTag": "Artemis_1.1.0",
+  "expectedCommit": "0f4d97e3fe66cff58614be7ef38158db4d635c23",
+  "isolation": {
+    "mongoPort": 27120,
+    "redisPort": 6392,
+    "clickhouseHttpPort": 8136,
+    "runtimePort": 13213,
+    "mongoDatabase": "arch_history_prior",
+    "redisNamespace": "arch-history-prior",
+    "clickhouseDatabase": "abl_platform"
+  },
+  "preparationCommands": [
+    { "executable": "pnpm", "argv": ["install", "--frozen-lockfile"] },
+    { "executable": "pnpm", "argv": ["--filter", "@agent-platform/runtime^...", "build"] },
+    { "executable": "pnpm", "argv": ["--filter", "@agent-platform/runtime", "build"] }
+  ],
+  "services": [
+    {
+      "name": "mongo",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-prior-mongo",
+          "-p",
+          "27120:27017",
+          "mongo:7",
+          "mongod",
+          "--bind_ip_all"
+        ]
+      },
+      "readyCommand": {
+        "executable": "docker",
+        "argv": [
+          "exec",
+          "arch-history-prior-mongo",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "db.runCommand({ping:1}).ok"
+        ]
+      }
+    },
+    {
+      "name": "redis",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-prior-redis",
+          "-p",
+          "6392:6379",
+          "redis:7-alpine"
+        ]
+      },
+      "readyCommand": {
+        "executable": "docker",
+        "argv": ["exec", "arch-history-prior-redis", "redis-cli", "ping"]
+      }
+    },
+    {
+      "name": "clickhouse",
+      "command": {
+        "executable": "docker",
+        "argv": [
+          "run",
+          "--rm",
+          "--name",
+          "arch-history-prior-clickhouse",
+          "-e",
+          "CLICKHOUSE_USER=abl_admin",
+          "-e",
+          "CLICKHOUSE_PASSWORD=arch_history_test",
+          "-p",
+          "8136:8123",
+          "clickhouse/clickhouse-server:24.3"
+        ]
+      },
+      "readyUrl": "http://127.0.0.1:8136/ping"
+    },
+    {
+      "name": "runtime",
+      "command": {
+        "executable": "pnpm",
+        "argv": ["--filter", "@agent-platform/runtime", "start"],
+        "cwd": "${WORKTREE}",
+        "envRefs": []
+      },
+      "readyUrl": "http://127.0.0.1:13213/health/live"
+    }
+  ],
+  "reportDirectory": "../test-reports/session-history-prior"
+}

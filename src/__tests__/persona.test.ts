@@ -7,6 +7,7 @@ import {
   ARCH_MCP_DESCRIPTION,
   ARCH_MCP_ROUTE_KEY_PREFIX,
   ARCH_MCP_SERVER_NAME,
+  ARCH_MCP_SERVER_VERSION,
   formatArchToolDescription,
   getArchCapabilityForTool,
   hasArchCapabilityForTool,
@@ -14,7 +15,12 @@ import {
 
 describe('Arch MCP persona', () => {
   it('uses Arch server identity and describes the full capability set', () => {
+    const packageJson = JSON.parse(
+      readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+    ) as { version: string };
+
     expect(ARCH_MCP_SERVER_NAME).toBe('arch-agent-platform');
+    expect(ARCH_MCP_SERVER_VERSION).toBe(packageJson.version);
     expect(ARCH_MCP_ROUTE_KEY_PREFIX).toBe('arch-mcp');
     for (const capability of ARCH_CAPABILITY_ORDER) {
       expect(ARCH_MCP_DESCRIPTION).toContain(capability);
@@ -34,6 +40,11 @@ describe('Arch MCP persona', () => {
     }
   });
 
+  it('presents historical session analysis as an explicit Debug capability', () => {
+    expect(getArchCapabilityForTool('debug_session_history')).toBe('Debug');
+    expect(hasArchCapabilityForTool('debug_session_history')).toBe(true);
+  });
+
   it('personifies every exposed tool description as Arch', () => {
     for (const tool of tools) {
       const capability = getArchCapabilityForTool(tool.name);
@@ -49,6 +60,8 @@ describe('Arch MCP persona', () => {
     const readme = readFileSync(new URL('../../README.md', import.meta.url), 'utf8');
 
     expect(readme).toContain('## Tools');
+    expect(readme).toContain('## `1.5.0` release');
+    expect(readme).toContain('knowledge protocol remains schema version `1`');
     expect(readme).not.toMatch(/## Tools \(\d+\)/);
     expect(readme).toContain('Arch Build');
     expect(readme).toContain('Arch Evaluate');

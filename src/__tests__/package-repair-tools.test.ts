@@ -1,15 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { debugLintAbl } from '../tools/debug-lint-abl.js';
 import { debugWhyTranscriptFailed } from '../tools/debug-why-transcript-failed.js';
 import type { DebugContext } from '../tools/index.js';
 import { platformPackageModel } from '../tools/platform-package-model.js';
-import { fetchWithTimeout } from '../utils/fetch.js';
+import type { StudioApiDependencies } from '../utils/studio-api.js';
 
-vi.mock('../utils/fetch.js', () => ({
-  fetchWithTimeout: vi.fn(),
-}));
+interface FetchCall {
+  url: string;
+  options: RequestInit;
+  timeoutMs: number;
+}
 
-const fetchMock = vi.mocked(fetchWithTimeout);
+interface FetchRecorder {
+  calls: FetchCall[];
+  dependencies: StudioApiDependencies;
+}
 
 const ctx = {
   httpClient: {
@@ -18,69 +23,88 @@ const ctx = {
   },
 } as unknown as DebugContext;
 
-beforeEach(() => {
-  fetchMock.mockReset();
-});
+const data = {
+  files: {
+    'wrapped/project.json': '{"format_version":"2.0"}',
+    'wrapped/agents/support.agent.abl': 'AGENT: Support\nGOAL: "Help"',
+  },
+};
 
 describe('package repair MCP tools', () => {
-  it('accepts import-style data.files payloads across lint, model, and transcript diagnosis', async () => {
-    fetchMock
-      .mockResolvedValueOnce(jsonResponse({ success: true, issues: [] }))
-      .mockResolvedValueOnce(jsonResponse({ success: true, model: { agents: [] } }))
-      .mockResolvedValueOnce(jsonResponse({ success: true, diagnosis: { findings: [] } }));
-
-    const data = {
-      files: {
-        'wrapped/project.json': '{"format_version":"2.0"}',
-        'wrapped/agents/support.agent.abl': 'AGENT: Support\nGOAL: "Help"',
-      },
-    };
-
-    expect(JSON.parse(await debugLintAbl({ data }, ctx))).toMatchObject({
-      success: true,
-    });
-    expect(JSON.parse(await platformPackageModel({ data }, ctx))).toMatchObject({ success: true });
-    expect(
-      JSON.parse(
-        await debugWhyTranscriptFailed(
+  it.each([
+    {
+      name: 'debug_lint_abl',
+      endpoint: '/api/abl/package/lint',
+      response: { success: true, issues: [] },
+      run: (dependencies: StudioApiDependencies) => debugLintAbl({ data }, ctx, dependencies),
+    },
+    {
+      name: 'platform_package_model',
+      endpoint: '/api/abl/package/model',
+      response: { success: true, model: { agents: [] } },
+      run: (dependencies: StudioApiDependencies) =>
+        platformPackageModel({ data }, ctx, dependencies),
+    },
+    {
+      name: 'debug_why_transcript_failed',
+      endpoint: '/api/abl/package/diagnose-transcript',
+      response: { success: true, diagnosis: { findings: [] } },
+      run: (dependencies: StudioApiDependencies) =>
+        debugWhyTranscriptFailed(
           { data, transcript: { steps: [{ type: 'finalize' }] } },
           ctx,
+          dependencies,
         ),
-      ),
-    ).toMatchObject({ success: true });
+    },
+  ])('accepts import-style data.files payloads for $name', async ({ endpoint, response, run }) => {
+    const fetchRecorder = createFetchRecorder(jsonResponse(response));
 
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      'http://localhost:5173/api/abl/package/lint',
-      expect.objectContaining({ method: 'POST' }),
-      30_000,
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      'http://localhost:5173/api/abl/package/model',
-      expect.objectContaining({ method: 'POST' }),
-      30_000,
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      'http://localhost:5173/api/abl/package/diagnose-transcript',
-      expect.objectContaining({ method: 'POST' }),
-      30_000,
+    expect(JSON.parse(await run(fetchRecorder.dependencies))).toMatchObject({ success: true });
+
+    expect(fetchRecorder.calls).toHaveLength(1);
+    expect(fetchRecorder.calls[0]).toMatchObject({
+      url: `http://localhost:5173${endpoint}`,
+      options: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'http://localhost:5173',
+          Authorization: 'Bearer token-123',
+        },
+      },
+      timeoutMs: 30_000,
+    });
+
+    const body = readCallBody<{
+      files: Record<string, string>;
+      transcript?: { steps: Array<{ type: string }> };
+    }>(fetchRecorder, 0);
+    expect(body.files).toEqual({
+      'project.json': '{"format_version":"2.0"}',
+      'agents/support.agent.abl': 'AGENT: Support\nGOAL: "Help"',
+    });
+  });
+
+  it('includes transcripts in transcript diagnosis requests', async () => {
+    const fetchRecorder = createFetchRecorder(
+      jsonResponse({ success: true, diagnosis: { findings: [] } }),
     );
 
-    for (const call of fetchMock.mock.calls) {
-      const body = JSON.parse(call[1]?.body as string) as {
-        files: Record<string, string>;
-      };
-      expect(body.files).toEqual({
-        'project.json': '{"format_version":"2.0"}',
-        'agents/support.agent.abl': 'AGENT: Support\nGOAL: "Help"',
-      });
-    }
+    await debugWhyTranscriptFailed(
+      { data, transcript: { steps: [{ type: 'finalize' }] } },
+      ctx,
+      fetchRecorder.dependencies,
+    );
+
+    expect(
+      readCallBody<{ transcript: { steps: Array<{ type: string }> } }>(fetchRecorder, 0).transcript,
+    ).toEqual({
+      steps: [{ type: 'finalize' }],
+    });
   });
 
   it('promotes package model constraint observability to the MCP response top level', async () => {
-    fetchMock.mockResolvedValueOnce(
+    const fetchRecorder = createFetchRecorder(
       jsonResponse({
         success: true,
         model: {
@@ -117,6 +141,7 @@ describe('package repair MCP tools', () => {
           },
         },
         ctx,
+        fetchRecorder.dependencies,
       ),
     ) as {
       constraintObservability: {
@@ -142,6 +167,28 @@ describe('package repair MCP tools', () => {
     });
   });
 });
+
+function createFetchRecorder(...responses: Response[]): FetchRecorder {
+  const calls: FetchCall[] = [];
+  const queue = [...responses];
+  const fetchWithTimeout: StudioApiDependencies['fetchWithTimeout'] = async (
+    url,
+    options = {},
+    timeoutMs = 5000,
+  ) => {
+    calls.push({ url, options, timeoutMs });
+    return queue.shift() ?? jsonResponse({});
+  };
+
+  return {
+    calls,
+    dependencies: { fetchWithTimeout },
+  };
+}
+
+function readCallBody<T>(fetchRecorder: FetchRecorder, index: number): T {
+  return JSON.parse(fetchRecorder.calls[index]?.options.body as string) as T;
+}
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
